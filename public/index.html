@@ -611,77 +611,250 @@ function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=tru
 function exportar(){var blob=new Blob([JSON.stringify({D:D,LE:LE,LC:LC,LD:LD,ts:new Date().toISOString()})],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gelocrim_pvr_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();}
 
 function importFusion(file){
-  if(!file)return;var st=document.getElementById('st-f');st.textContent='Lendo...';
+  if(!file)return;
+  var st=document.getElementById('st-f');
+  st.textContent='Lendo...';
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
-      var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
-      var novos=0;
-      rows.forEach(function(row,i){
-        if(i<2||!row[0]||!row[11])return;
-        var dt=null;
-        try{if(row[11] instanceof Date)dt=row[11];else{var s=String(row[11]).substring(0,10);if(s[2]==='/')dt=new Date(+s.substring(6),+s.substring(3,5)-1,+s.substring(0,2),+String(row[11]).substring(11,13),+String(row[11]).substring(14,16));else dt=new Date(s);}}catch(ex){}
-        if(!dt)return;
-        var pz=function(n){return String(n).padStart(2,'0');};
-        var dia=dt.getFullYear()+'-'+pz(dt.getMonth()+1)+'-'+pz(dt.getDate());
-        var mot=String(row[9]||'').trim().split(' ')[0];
-        var vda=String(row[10]||'').trim().replace(/\s/g,'');
-        var km=(parseFloat(String(row[7]).replace(/\./g,'').replace(',','.'))||0)/1000;
-        var peso=parseFloat(String(row[3]).replace(/\./g,'').replace(',','.'))||0;
-        var dtF=null;try{if(row[13])dtF=new Date(String(row[13]));}catch(ex){}
-        var dtS=null;try{if(row[12])dtS=new Date(String(row[12]));}catch(ex){}
-        var hSP=pz(dt.getHours())+':'+pz(dt.getMinutes());
-        var hRP=dtF?pz(dtF.getHours())+':'+pz(dtF.getMinutes()):null;
-        var hSR=dtS?pz(dtS.getHours())+':'+pz(dtS.getMinutes()):null;
-        var hRR=(dtS&&dtF&&dtF>dtS)?pz(dtF.getHours())+':'+pz(dtF.getMinutes()):null;
-        var tP=(dtF&&dtF>dt)?Math.round((dtF-dt)/36000)/10:null;
-        var equipe=[mot];for(var ci=16;ci<=19;ci++){var v=String(row[ci]||'').trim();if(v&&v!=='None'&&equipe.indexOf(v.split(' ')[0])<0)equipe.push(v.split(' ')[0]);}
-        if(!D[dia])D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
-        if(!D[dia].equipes[mot])D[dia].equipes[mot]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP};
+      var wb=XLSX.read(e.target.result,{type:'binary',cellDates:false});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+      var novos=0,erros=0;
+
+      // Encontrar linha de cabeçalho (linha 1 = índice 1)
+      var dataStart=2; // dados começam na linha 3 (índice 2)
+
+      function parsePeso(v){
+        // "1.011,50" → 1011.50
+        if(!v) return 0;
+        var s=String(v).replace(/\./g,'').replace(',','.');
+        return parseFloat(s)||0;
+      }
+      function parseKM(v){
+        // valor em metros → km
+        if(!v) return 0;
+        return Math.round(parseFloat(String(v).replace(',','.'))/1000*10)/10;
+      }
+      function parseExcel(v){
+        // Excel serialDate ou string
+        if(!v) return null;
+        if(typeof v==='number'){
+          // Excel date serial
+          var d=new Date(Math.round((v-25569)*86400*1000));
+          return d;
+        }
+        var s=String(v).trim().substring(0,19);
+        // dd/mm/yyyy hh:mm:ss
+        if(s[2]==='/'){
+          var p=s.split(/[\/\s:]/);
+          return new Date(+p[2],+p[1]-1,+p[0],+p[3]||0,+p[4]||0,+p[5]||0);
+        }
+        // yyyy-mm-dd hh:mm:ss
+        return new Date(s);
+      }
+      function pz(n){return String(n).padStart(2,'0');}
+      function fmt(dt){
+        if(!dt||isNaN(dt.getTime())) return null;
+        return pz(dt.getHours())+':'+pz(dt.getMinutes());
+      }
+      function fmtDia(dt){
+        if(!dt||isNaN(dt.getTime())) return null;
+        return dt.getFullYear()+'-'+pz(dt.getMonth()+1)+'-'+pz(dt.getDate());
+      }
+
+      for(var i=dataStart;i<rows.length;i++){
+        var row=rows[i];
+        if(!row[0]||String(row[0]).trim()==='') continue;
+
+        var cargaId = String(row[0]).trim();
+        var peso    = parsePeso(row[3]);
+        var rota    = String(row[6]||'').trim();
+        var kmM     = parseKM(row[7]);
+        var mot     = String(row[9]||'').trim().split(' ')[0]; // só primeiro nome
+        var vda     = String(row[10]||'').trim().replace(/\s/g,'');
+        var dtPlan  = parseExcel(row[11]);
+        var dtSaiR  = parseExcel(row[12]);
+        var dtFim   = parseExcel(row[13]);
+
+        if(!dtPlan||isNaN(dtPlan.getTime())){erros++;continue;}
+
+        var dia = fmtDia(dtPlan);
+        if(!dia){erros++;continue;}
+
+        var hSP = fmt(dtPlan);  // início planejado
+        var hRP = fmt(dtFim);   // retorno planejado
+        var hSR = fmt(dtSaiR);  // início real
+        var hRR = null;
+        // retorno real = data termino quando saída real existe e termino > saída real
+        if(dtSaiR&&dtFim&&!isNaN(dtSaiR.getTime())&&!isNaN(dtFim.getTime())&&dtFim>dtSaiR){
+          hRR=fmt(dtFim);
+        }
+
+        var equipe=[mot];
+        for(var ci=16;ci<=19;ci++){
+          var aj=String(row[ci]||'').trim().split(' ')[0];
+          if(aj&&aj!=='None'&&aj!==''&&equipe.indexOf(aj)<0) equipe.push(aj);
+        }
+
+        // Determinar tipo: recarga se h_saida_plan >= 10:00
+        var tipo='1carga';
+        if(hSP&&hSP>='10:00') tipo='recarga';
+
+        // Criar estrutura do dia se não existe
+        if(!D[dia]) D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
+
+        // Criar equipe se não existe
+        if(!D[dia].equipes[mot]){
+          D[dia].equipes[mot]={
+            cargas:[],vdas:[],equipe:equipe,
+            km_plan:0,peso_plan:0,h_saida_plan:hSP
+          };
+        }
+
         var E=D[dia].equipes[mot];
-        E.km_plan=+(E.km_plan+km).toFixed(1);E.peso_plan=+(E.peso_plan+peso).toFixed(1);
-        if(hSP<E.h_saida_plan)E.h_saida_plan=hSP;
-        if(E.vdas.indexOf(vda)<0)E.vdas.push(vda);
-        D[dia].km_plan=+(D[dia].km_plan+km).toFixed(1);
-        E.cargas.push({id:String(row[0]).trim(),rota:String(row[6]||'').trim(),vda:vda,km_plan:+km.toFixed(1),peso_plan:+peso.toFixed(1),h_saida_plan:hSP,h_ret_plan:hRP,h_saida_real:hSR,h_ret_real:hRR,t_plan_h:tP});
+
+        // Atualizar hora de saída mínima da equipe
+        if(!E.h_saida_plan||hSP<E.h_saida_plan) E.h_saida_plan=hSP;
+        if(E.vdas.indexOf(vda)<0) E.vdas.push(vda);
+
+        E.km_plan  =Math.round((E.km_plan+kmM)*10)/10;
+        E.peso_plan=Math.round((E.peso_plan+peso)*10)/10;
+        D[dia].km_plan=Math.round((D[dia].km_plan+kmM)*10)/10;
+
+        // Preencher retorno real do Fusion se disponível
+        if(hRR){
+          if(!LE[dia]) LE[dia]={};
+          if(!LE[dia][mot]) LE[dia][mot]={};
+          // Manter o retorno mais tarde
+          var retAtual=LE[dia][mot].h_ret_real||'00:00';
+          if(hRR>retAtual) LE[dia][mot].h_ret_real=hRR;
+        }
+
+        E.cargas.push({
+          id:        cargaId,
+          rota:      rota,
+          vda:       vda,
+          km_plan:   kmM,
+          peso_plan: Math.round(peso*10)/10,
+          h_saida_plan: hSP,
+          h_ret_plan:   hRP,
+          h_saida_real: hSR,
+          h_ret_real:   hRR,
+          tipo:         tipo
+        });
         novos++;
+      }
+
+      // Ordenar cargas por h_saida_plan dentro de cada equipe
+      Object.keys(D).forEach(function(dia){
+        Object.values(D[dia].equipes||{}).forEach(function(E){
+          E.cargas.sort(function(a,b){return (a.h_saida_plan||'').localeCompare(b.h_saida_plan||'');});
+        });
       });
-      document.getElementById('dz-f').classList.add('ok');st.textContent=novos+' cargas importadas';
-      // Atualizar navegação e selecionar o último dia importado
+
+      document.getElementById('dz-f').classList.add('ok');
+      st.textContent=novos+' cargas'+(erros?' ('+erros+' erros)':'');
+
+      // Navegar para o último dia importado
       var allDias=Object.keys(D).sort();
       var ultimoDia=allDias[allDias.length-1];
       MES=ultimoDia.substring(0,7);
-      buildMesTabs();buildDiaNav();
-      selDia(ultimoDia);
-    }catch(err){st.textContent='Erro: '+err.message;console.error(err);}
-  };reader.readAsBinaryString(file);
+      buildMesTabs();buildDiaNav();selDia(ultimoDia);
+
+    }catch(err){
+      st.textContent='Erro: '+err.message;
+      console.error('importFusion error:',err);
+    }
+  };
+  reader.readAsBinaryString(file);
 }
 
 function importEnc(file){
-  if(!file||!DIA)return;var st=document.getElementById('st-e');st.textContent='Lendo...';
+  if(!file)return;
+  var st=document.getElementById('st-e');
+  st.textContent='Lendo...';
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var wb=XLSX.read(e.target.result,{type:'binary'});var pv=0,tr=0,bn=0,co=0;
+      var wb=XLSX.read(e.target.result,{type:'binary'});
+      var totalPV=0,totalRec=0,totalBon=0,totalCon=0;
+      var diaEnc=null;
+
       wb.SheetNames.forEach(function(aba){
-        var rows=XLSX.utils.sheet_to_json(wb.Sheets[aba],{header:1,defval:''});
-        rows.forEach(function(row){
-          var c9=String(row[9]||'').trim().toUpperCase();
-          var s=function(i){return parseInt(row[i])||0;};
-          var p=s(10)*3+s(11)*6+s(12)*11+s(13)*23+s(14)*45+s(15)*55;
-          if(!p)return;
-          if(c9.indexOf('PRE-VENDA')>=0||c9.indexOf('PRÉ-VENDA')>=0)pv+=p;
-          else if(c9.indexOf('TROCA')>=0)tr+=p;
-          else if(c9.indexOf('BONIF')>=0)bn+=p;
-          else if(c9.indexOf('CONSIG')>=0)co+=p;
-        });
+        // Detectar data da aba: "01.09.2026" → "2026-09-01"
+        var m=aba.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if(m) diaEnc=m[3]+'-'+m[2]+'-'+m[1];
+
+        var rows=XLSX.utils.sheet_to_json(wb.Sheets[aba],{header:1,defval:'',raw:true});
+
+        // Encontrar linha de cabeçalho (tem 'ROTA' na col 0)
+        var hdrIdx=-1;
+        for(var i=0;i<rows.length;i++){
+          if(String(rows[i][0]).trim().toUpperCase()==='ROTA'){hdrIdx=i;break;}
+        }
+        if(hdrIdx<0) return;
+
+        function qty(v){
+          try{
+            var n=parseFloat(String(v).replace(',','.'));
+            return isNaN(n)?0:Math.round(n);
+          }catch(ex){return 0;}
+        }
+
+        for(var i=hdrIdx+1;i<rows.length;i++){
+          var row=rows[i];
+          var tipo=String(row[9]||'').trim().toUpperCase();
+          if(!tipo) continue;
+
+          var q3  =qty(row[10]); // 377 3kg
+          var q5  =qty(row[11]); // 370 5kg
+          var q10 =qty(row[12]); // 371 10kg
+          var q20 =qty(row[13]); // 372 20kg
+          var q40 =qty(row[14]); // 373 40kg
+          var q50 =qty(row[15]); // 374 50kg
+
+          var peso=q3*3+q5*6+q10*11+q20*23+q40*45+q50*55;
+          if(!peso) continue;
+
+          if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0||tipo.indexOf('PREVENDA')>=0)
+            totalPV+=peso;
+          else if(tipo.indexOf('TROCA')>=0)  totalRec+=peso;
+          else if(tipo.indexOf('BONIF')>=0)  totalBon+=peso;
+          else if(tipo.indexOf('CONSIG')>=0) totalCon+=peso;
+        }
       });
-      if(!D[DIA])D[DIA]={mes:DIA.substring(0,7),equipes:{}};
-      D[DIA].peso_plan_pv=pv;D[DIA].has_prog=true;
-      document.getElementById('dz-e').classList.add('ok');st.textContent='PV: '+pv.toLocaleString('pt-BR')+' kg';renderKPIs();
-    }catch(err){st.textContent='Erro: '+err.message;}
-  };reader.readAsBinaryString(file);
+
+      // Atualizar dia com peso planejado
+      var alvo=diaEnc||DIA;
+      if(alvo){
+        if(!D[alvo]) D[alvo]={mes:alvo.substring(0,7),km_plan:0,equipes:{}};
+        D[alvo].peso_plan_pv  =totalPV;
+        D[alvo].peso_trocas   =totalRec;
+        D[alvo].peso_bonif    =totalBon;
+        D[alvo].peso_consig   =totalCon;
+        D[alvo].has_prog      =true;
+        // Criar entrada no pvr_dias do Supabase
+        sbSaveDia(alvo);
+      }
+
+      document.getElementById('dz-e').classList.add('ok');
+      st.textContent='PV: '+totalPV.toLocaleString('pt-BR')+' kg'+(diaEnc?' ('+diaEnc.split('-').reverse().join('/')+')':'');
+
+      // Navegar para o dia do encerramento
+      if(diaEnc){
+        MES=diaEnc.substring(0,7);
+        buildMesTabs();buildDiaNav();selDia(diaEnc);
+      } else {
+        renderKPIs();
+      }
+
+    }catch(err){
+      st.textContent='Erro: '+err.message;
+      console.error('importEnc error:',err);
+    }
+  };
+  reader.readAsBinaryString(file);
 }
 
 window.addEventListener('load',function(){
