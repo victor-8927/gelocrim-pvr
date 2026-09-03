@@ -620,38 +620,32 @@ function importFusion(file){
       var wb=XLSX.read(e.target.result,{type:'binary',cellDates:false});
       var ws=wb.Sheets[wb.SheetNames[0]];
       var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
-      var novos=0,erros=0;
-
-      // Encontrar linha de cabeçalho (linha 1 = índice 1)
-      var dataStart=2; // dados começam na linha 3 (índice 2)
+      var novos=0,erros=[];
 
       function parsePeso(v){
-        // "1.011,50" → 1011.50
-        if(!v) return 0;
+        if(!v&&v!==0) return 0;
         var s=String(v).replace(/\./g,'').replace(',','.');
         return parseFloat(s)||0;
       }
       function parseKM(v){
-        // valor em metros → km
-        if(!v) return 0;
-        return Math.round(parseFloat(String(v).replace(',','.'))/1000*10)/10;
+        if(!v&&v!==0) return 0;
+        // Fusion exporta KM já em km (ex: 33.692 = 33.7 km)
+        if(typeof v==='number') return Math.round(v*10)/10;
+        return Math.round(parseFloat(String(v).replace(',','.'))*10)/10;
       }
-      function parseExcel(v){
-        // Excel serialDate ou string
+      function parseDT(v){
         if(!v) return null;
-        if(typeof v==='number'){
-          // Excel date serial
-          var d=new Date(Math.round((v-25569)*86400*1000));
-          return d;
-        }
-        var s=String(v).trim().substring(0,19);
-        // dd/mm/yyyy hh:mm:ss
-        if(s[2]==='/'){
-          var p=s.split(/[\/\s:]/);
-          return new Date(+p[2],+p[1]-1,+p[0],+p[3]||0,+p[4]||0,+p[5]||0);
-        }
-        // yyyy-mm-dd hh:mm:ss
-        return new Date(s);
+        var s=String(v).trim();
+        if(!s||s==='null'||s==='None') return null;
+        // formato dd/mm/yyyy HH:MM:SS
+        var m1=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+        if(m1) return new Date(+m1[3],+m1[2]-1,+m1[1],+m1[4],+m1[5]);
+        // formato yyyy-mm-dd HH:MM:SS
+        var m2=s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        if(m2) return new Date(+m2[1],+m2[2]-1,+m2[3],+m2[4],+m2[5]);
+        // Excel serial
+        if(typeof v==='number') return new Date(Math.round((v-25569)*86400000));
+        return null;
       }
       function pz(n){return String(n).padStart(2,'0');}
       function fmt(dt){
@@ -663,33 +657,29 @@ function importFusion(file){
         return dt.getFullYear()+'-'+pz(dt.getMonth()+1)+'-'+pz(dt.getDate());
       }
 
-      for(var i=dataStart;i<rows.length;i++){
+      for(var i=2;i<rows.length;i++){
         var row=rows[i];
-        if(!row[0]||String(row[0]).trim()==='') continue;
+        var cargaId=String(row[0]||'').trim();
+        // Ignorar linha vazia ou linha TOTAL
+        if(!cargaId||cargaId.toUpperCase()==='TOTAL'||cargaId==='') continue;
+        // Ignorar se não é número
+        if(isNaN(+cargaId)){erros.push('linha '+(i+1)+': ID inválido: '+cargaId);continue;}
 
-        var cargaId = String(row[0]).trim();
-        var peso    = parsePeso(row[3]);
-        var rota    = String(row[6]||'').trim();
-        var kmM     = parseKM(row[7]);
-        var mot     = String(row[9]||'').trim().split(' ')[0]; // só primeiro nome
-        var vda     = String(row[10]||'').trim().replace(/\s/g,'');
-        var dtPlan  = parseExcel(row[11]);
-        var dtSaiR  = parseExcel(row[12]);
-        var dtFim   = parseExcel(row[13]);
+        var dtPlan = parseDT(row[11]);
+        if(!dtPlan){erros.push('carga '+cargaId+': data inválida');continue;}
 
-        if(!dtPlan||isNaN(dtPlan.getTime())){erros++;continue;}
-
-        var dia = fmtDia(dtPlan);
-        if(!dia){erros++;continue;}
-
-        var hSP = fmt(dtPlan);  // início planejado
-        var hRP = fmt(dtFim);   // retorno planejado
-        var hSR = fmt(dtSaiR);  // início real
-        var hRR = null;
-        // retorno real = data termino quando saída real existe e termino > saída real
-        if(dtSaiR&&dtFim&&!isNaN(dtSaiR.getTime())&&!isNaN(dtFim.getTime())&&dtFim>dtSaiR){
-          hRR=fmt(dtFim);
-        }
+        var dia    = fmtDia(dtPlan);
+        var mot    = String(row[9]||'').trim().split(' ')[0];
+        var vda    = String(row[10]||'').trim().replace(/\s/g,'');
+        var rota   = String(row[6]||'').trim();
+        var peso   = parsePeso(row[3]);
+        var km     = parseKM(row[7]);
+        var dtSaiR = parseDT(row[12]);
+        var dtFim  = parseDT(row[13]);
+        var hSP    = fmt(dtPlan);
+        var hRP    = fmt(dtFim);
+        var hSR    = fmt(dtSaiR);
+        var hRR    = (dtSaiR&&dtFim&&dtFim>dtSaiR)?fmt(dtFim):null;
 
         var equipe=[mot];
         for(var ci=16;ci<=19;ci++){
@@ -697,64 +687,50 @@ function importFusion(file){
           if(aj&&aj!=='None'&&aj!==''&&equipe.indexOf(aj)<0) equipe.push(aj);
         }
 
-        // Determinar tipo: recarga se h_saida_plan >= 10:00
-        var tipo='1carga';
-        if(hSP&&hSP>='10:00') tipo='recarga';
+        // Tipo: recarga se saída planejada >= 10:00
+        var tipo=(hSP&&hSP>='10:00')?'recarga':'1carga';
 
-        // Criar estrutura do dia se não existe
         if(!D[dia]) D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
-
-        // Criar equipe se não existe
-        if(!D[dia].equipes[mot]){
-          D[dia].equipes[mot]={
-            cargas:[],vdas:[],equipe:equipe,
-            km_plan:0,peso_plan:0,h_saida_plan:hSP
-          };
-        }
+        if(!D[dia].equipes[mot]) D[dia].equipes[mot]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP};
 
         var E=D[dia].equipes[mot];
-
-        // Atualizar hora de saída mínima da equipe
         if(!E.h_saida_plan||hSP<E.h_saida_plan) E.h_saida_plan=hSP;
         if(E.vdas.indexOf(vda)<0) E.vdas.push(vda);
+        E.km_plan   =Math.round((E.km_plan+km)*10)/10;
+        E.peso_plan =Math.round((E.peso_plan+peso)*10)/10;
+        D[dia].km_plan=Math.round((D[dia].km_plan+km)*10)/10;
 
-        E.km_plan  =Math.round((E.km_plan+kmM)*10)/10;
-        E.peso_plan=Math.round((E.peso_plan+peso)*10)/10;
-        D[dia].km_plan=Math.round((D[dia].km_plan+kmM)*10)/10;
-
-        // Preencher retorno real do Fusion se disponível
+        // Se Fusion tem retorno real, preencher LE
         if(hRR){
           if(!LE[dia]) LE[dia]={};
           if(!LE[dia][mot]) LE[dia][mot]={};
-          // Manter o retorno mais tarde
           var retAtual=LE[dia][mot].h_ret_real||'00:00';
           if(hRR>retAtual) LE[dia][mot].h_ret_real=hRR;
         }
 
         E.cargas.push({
-          id:        cargaId,
-          rota:      rota,
-          vda:       vda,
-          km_plan:   kmM,
-          peso_plan: Math.round(peso*10)/10,
-          h_saida_plan: hSP,
-          h_ret_plan:   hRP,
-          h_saida_real: hSR,
-          h_ret_real:   hRR,
-          tipo:         tipo
+          id:cargaId,rota:rota,vda:vda,
+          km_plan:km,peso_plan:Math.round(peso*10)/10,
+          h_saida_plan:hSP,h_ret_plan:hRP,
+          h_saida_real:hSR,h_ret_real:hRR,
+          tipo:tipo
         });
         novos++;
       }
 
-      // Ordenar cargas por h_saida_plan dentro de cada equipe
+      // Ordenar cargas por h_saida_plan
       Object.keys(D).forEach(function(dia){
         Object.values(D[dia].equipes||{}).forEach(function(E){
-          E.cargas.sort(function(a,b){return (a.h_saida_plan||'').localeCompare(b.h_saida_plan||'');});
+          E.cargas.sort(function(a,b){return(a.h_saida_plan||'').localeCompare(b.h_saida_plan||'');});
         });
       });
 
+      // Feedback
+      var msg=novos+' cargas importadas';
+      if(erros.length) msg+=' ('+erros.length+' ignoradas)';
       document.getElementById('dz-f').classList.add('ok');
-      st.textContent=novos+' cargas'+(erros?' ('+erros+' erros)':'');
+      st.textContent=msg;
+      console.log('importFusion erros:',erros);
 
       // Navegar para o último dia importado
       var allDias=Object.keys(D).sort();
@@ -764,7 +740,7 @@ function importFusion(file){
 
     }catch(err){
       st.textContent='Erro: '+err.message;
-      console.error('importFusion error:',err);
+      console.error('importFusion:',err);
     }
   };
   reader.readAsBinaryString(file);
