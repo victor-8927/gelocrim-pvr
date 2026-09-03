@@ -219,6 +219,164 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 
+
+var SB_URL='https://wziprddrflgpzankofad.supabase.co';
+var SB_KEY='sb_publishable_h8o3BLGJUUcf8dVjdEY3kg_EhdmcC2o';
+
+function sbFetch(method, path, body) {
+  return fetch(SB_URL + path, {
+    method: method,
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+}
+
+async function sbLoadDia(dia) {
+  try {
+    // Carregar dia
+    var r1 = await fetch(SB_URL + '/rest/v1/pvr_dias?dia=eq.' + dia, {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
+    });
+    var dias = await r1.json();
+    if (!dias.length) return null;
+    var d = dias[0];
+
+    // Carregar equipes
+    var r2 = await fetch(SB_URL + '/rest/v1/pvr_equipes?dia=eq.' + dia, {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
+    });
+    var equipes = await r2.json();
+
+    // Carregar cargas
+    var r3 = await fetch(SB_URL + '/rest/v1/pvr_cargas?dia=eq.' + dia, {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
+    });
+    var cargas = await r3.json();
+
+    // Restaurar LE e LC do Supabase
+    equipes.forEach(function(e) {
+      if (!LE[dia]) LE[dia] = {};
+      LE[dia][e.motorista] = {
+        hod_ini:    e.hod_ini || '',
+        hod_ret:    e.hod_ret || '',
+        km_real:    e.km_real,
+        h_ret_real: e.h_ret_real || '',
+        ok:         e.ok || false
+      };
+    });
+
+    cargas.forEach(function(c) {
+      if (!LC[dia]) LC[dia] = {};
+      LC[dia][c.carga_id] = {
+        peso_real: c.peso_real,
+        ok:        c.ok || false
+      };
+    });
+
+    // Restaurar LD
+    if (!LD[dia]) LD[dia] = {c_p:[],c_k:[],c_t:[]};
+    if (d.locked) {
+      LD[dia].locked   = true;
+      LD[dia].lock_ts  = d.lock_ts || '';
+      LD[dia].obs_p    = d.obs_peso || '';
+      LD[dia].obs_k    = d.obs_km  || '';
+      LD[dia].obs_t    = d.obs_tempo || '';
+      LD[dia].c_p      = d.chips_peso  || [];
+      LD[dia].c_k      = d.chips_km   || [];
+      LD[dia].c_t      = d.chips_tempo || [];
+    }
+    return d;
+  } catch(e) {
+    console.warn('Supabase load error:', e);
+    return null;
+  }
+}
+
+async function sbSaveDia(dia) {
+  try {
+    var ld = LD[dia] || {};
+    var d  = D[dia]  || {};
+
+    // Upsert pvr_dias
+    await sbFetch('POST', '/rest/v1/pvr_dias?on_conflict=dia', [{
+      dia:         dia,
+      mes:         d.mes || dia.substring(0,7),
+      km_plan:     d.km_plan || 0,
+      peso_plan_pv: d.peso_plan_pv || 0,
+      has_prog:    d.has_prog || false,
+      locked:      ld.locked || false,
+      lock_ts:     ld.lock_ts || null,
+      obs_peso:    ld.obs_p || '',
+      obs_km:      ld.obs_k || '',
+      obs_tempo:   ld.obs_t || '',
+      chips_peso:  ld.c_p || [],
+      chips_km:    ld.c_k || [],
+      chips_tempo: ld.c_t || [],
+      updated_at:  new Date().toISOString()
+    }]);
+
+    // Upsert pvr_equipes
+    var eqs = Object.keys(d.equipes || {});
+    for (var i=0; i<eqs.length; i++) {
+      var mot = eqs[i];
+      var E   = d.equipes[mot];
+      var le  = (LE[dia] || {})[mot] || {};
+      await sbFetch('POST', '/rest/v1/pvr_equipes?on_conflict=dia,motorista', [{
+        dia:         dia,
+        motorista:   mot,
+        vdas:        E.vdas || [],
+        equipe:      E.equipe || [],
+        km_plan:     E.km_plan || 0,
+        peso_plan:   E.peso_plan || 0,
+        h_saida_plan: E.h_saida_plan || '07:30',
+        hod_ini:     le.hod_ini ? +le.hod_ini : null,
+        hod_ret:     le.hod_ret ? +le.hod_ret : null,
+        km_real:     le.km_real || null,
+        h_ret_real:  le.h_ret_real || null,
+        ok:          le.ok || false,
+        updated_at:  new Date().toISOString()
+      }]);
+    }
+
+    // Upsert pvr_cargas
+    var allCargas = [];
+    eqs.forEach(function(mot) {
+      (d.equipes[mot].cargas || []).forEach(function(c) {
+        var lc = (LC[dia] || {})[c.id] || {};
+        allCargas.push({
+          dia:         dia,
+          carga_id:    c.id,
+          motorista:   mot,
+          rota:        c.rota || '',
+          vda:         c.vda  || '',
+          km_plan:     c.km_plan || 0,
+          peso_plan:   c.peso_plan || 0,
+          h_saida_plan: c.h_saida_plan || '07:30',
+          h_ret_plan:  c.h_ret_plan || null,
+          h_saida_real: c.h_saida_real || null,
+          h_ret_real:  c.h_ret_real || null,
+          peso_real:   lc.peso_real || null,
+          ok:          lc.ok || false,
+          tipo:        c.tipo || '1carga',
+          updated_at:  new Date().toISOString()
+        });
+      });
+    });
+    if (allCargas.length) {
+      await sbFetch('POST', '/rest/v1/pvr_cargas?on_conflict=dia,carga_id', allCargas);
+    }
+
+    console.log('Supabase save OK:', dia);
+  } catch(e) {
+    console.warn('Supabase save error:', e);
+  }
+}
+
 var D=JSON.parse(document.getElementById('jd').textContent);
 var DIA=null,MES=null,LIMITE=1020;
 var LE={"2026-09-01":{"JAVIER":{"h_ret_real":"17:48","km_real":73,"hod_ini":"","hod_ret":"","ok":true},"ALEX":{"h_ret_real":"19:20","km_real":102,"hod_ini":"","hod_ret":"","ok":true},"ROLDAO":{"h_ret_real":"15:54","km_real":57,"hod_ini":"","hod_ret":"","ok":true},"MAICON":{"h_ret_real":"19:10","km_real":144,"hod_ini":"","hod_ret":"","ok":true},"MIRIAN":{"h_ret_real":"18:01","km_real":93,"hod_ini":"","hod_ret":"","ok":true},"HOMERO":{"h_ret_real":"16:58","km_real":56,"hod_ini":"","hod_ret":"","ok":true}}},LC={"2026-09-01":{"28718":{"peso_real":5128,"ok":true},"28713":{"peso_real":5858,"ok":true},"28717":{"peso_real":5977,"ok":true},"28710":{"peso_real":15290,"ok":true},"28720":{"peso_real":4676,"ok":true},"28712":{"peso_real":14423,"ok":true},"28716":{"peso_real":8867,"ok":true},"28714":{"peso_real":7386,"ok":true},"28721":{"peso_real":1940,"ok":true},"28722":{"peso_real":8348,"ok":true},"28723":{"peso_real":40500,"ok":true}}},LD={"2026-09-01":{"locked":true,"lock_ts":"22:29 de 01/09/2026","c_p":[],"c_k":[],"c_t":[],"obs_p":"","obs_k":"","obs_t":""}};
@@ -275,7 +433,9 @@ function buildDiaNav(){
 function selDia(dia){
   DIA=dia;
   if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};
-  buildDiaNav();
+  // Carregar do Supabase de forma assíncrona
+  sbLoadDia(dia).then(function() {
+    buildDiaNav();
   var ld=LD[dia];
   var lb=document.getElementById('lock-bar');
   if(ld.locked){lb.classList.add('on');document.getElementById('lock-info').textContent='Trancado em '+(ld.lock_ts||'');}
@@ -285,6 +445,7 @@ function selDia(dia){
   document.getElementById('obs-t').value=ld.obs_t||'';
   buildChips('p');buildChips('k');buildChips('t');
   renderKPIs();renderEquipes();
+  }).catch(function(e){ console.warn('sbLoad err',e); buildDiaNav(); renderKPIs(); renderEquipes(); });
 }
 
 function renderKPIs(){
@@ -441,12 +602,12 @@ function renderEquipes(){
   el.innerHTML=html;
 }
 
-function setHod(mot,campo,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot][campo]=v;renderKPIs();renderEquipes();}
-function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();}
+function setHod(mot,campo,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot][campo]=v;renderKPIs();renderEquipes();if(campo==='hod_ret')sbSaveDia(DIA);}
+function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();sbSaveDia(DIA);}
 function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();}
 function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();}
-function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();}
-function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');buildDiaNav();selDia(DIA);}
+function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();sbSaveDia(DIA);}
+function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');sbSaveDia(DIA);buildDiaNav();selDia(DIA);}
 function exportar(){var blob=new Blob([JSON.stringify({D:D,LE:LE,LC:LC,LD:LD,ts:new Date().toISOString()})],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gelocrim_pvr_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();}
 
 function importFusion(file){
