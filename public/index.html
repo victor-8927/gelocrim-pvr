@@ -690,7 +690,10 @@ function importFusion(file){
         // Tipo: recarga se saída planejada >= 10:00
         var tipo=(hSP&&hSP>='10:00')?'recarga':'1carga';
 
-        if(!D[dia]) D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
+        // Ao importar um novo Fusion, resetar o dia para evitar duplicação
+        if(!D[dia]||!D[dia]._importado){
+          D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:(D[dia]&&D[dia].peso_plan_pv)||0,has_prog:(D[dia]&&D[dia].has_prog)||false,equipes:{},_importado:true};
+        }
         if(!D[dia].equipes[mot]) D[dia].equipes[mot]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP};
 
         var E=D[dia].equipes[mot];
@@ -805,7 +808,8 @@ function importEnc(file){
       var alvo=diaEnc||DIA;
       if(alvo){
         if(!D[alvo]) D[alvo]={mes:alvo.substring(0,7),km_plan:0,equipes:{}};
-        D[alvo].peso_plan_pv  =totalPV;
+        D[alvo]._importado=false; // permite reimportar Fusion depois
+      D[alvo].peso_plan_pv  =totalPV;
         D[alvo].peso_trocas   =totalRec;
         D[alvo].peso_bonif    =totalBon;
         D[alvo].peso_consig   =totalCon;
