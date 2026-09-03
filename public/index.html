@@ -487,7 +487,12 @@ function importFusion(file){
         novos++;
       });
       document.getElementById('dz-f').classList.add('ok');st.textContent=novos+' cargas importadas';
+      // Atualizar navegação e selecionar o último dia importado
+      var allDias=Object.keys(D).sort();
+      var ultimoDia=allDias[allDias.length-1];
+      MES=ultimoDia.substring(0,7);
       buildMesTabs();buildDiaNav();
+      selDia(ultimoDia);
     }catch(err){st.textContent='Erro: '+err.message;console.error(err);}
   };reader.readAsBinaryString(file);
 }
