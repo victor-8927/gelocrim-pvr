@@ -116,6 +116,30 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
 .inp:focus{outline:none;border-color:var(--cy);background:rgba(0,194,255,.06)}
 .inp.f-ok{border-color:rgba(77,255,195,.3);color:var(--gr)}
 .km-calc{background:rgba(255,255,255,.07);border:1px solid var(--b);border-radius:7px;padding:7px 4px;text-align:center;min-height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.c-block{background:var(--s0);border:1px solid var(--b);border-radius:10px;padding:10px;margin-bottom:8px}
+.c-block.ok{border-color:rgba(77,255,195,.3);background:var(--grd)}
+.c-block.rec{border-left:3px solid var(--am)}
+.c-block-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px}
+.c-block-title{display:flex;align-items:center;gap:6px}
+.c-block-rota{font-size:12px;font-weight:800;color:var(--cy)}
+.c-block-id{font-size:8px;color:var(--tx3);font-family:var(--mo)}
+.c-block-tipo{font-size:8px;padding:2px 6px;border-radius:4px;font-weight:700}
+.c-block-tipo.r{background:var(--amd);color:var(--am)}.c-block-tipo.p{background:var(--cyd);color:var(--cy)}
+.c-block-plan{font-size:8px;color:var(--tx3);font-family:var(--mo);text-align:right}
+.c-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px;align-items:end;margin-bottom:6px}
+.c-f{display:flex;flex-direction:column;gap:2px}
+.c-l{font-size:7.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--tx3)}
+.c-inp{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(0,194,255,.2);border-radius:6px;color:var(--tx);font-size:12px;font-family:var(--mo);font-weight:700;text-align:center;padding:5px 3px;-webkit-appearance:none}
+.c-inp:focus{outline:none;border-color:var(--cy);background:rgba(0,194,255,.06)}
+.c-inp.f-ok{border-color:rgba(77,255,195,.3);color:var(--gr)}
+.c-calc{background:rgba(255,255,255,.07);border:1px solid var(--b);border-radius:6px;padding:5px 3px;text-align:center;font-size:12px;font-family:var(--mo);font-weight:700;color:var(--tx3);min-height:30px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px}
+.c-ok-btn{padding:6px 12px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;border:none;font-family:var(--mo);width:100%}
+.c-ok-btn.idle{background:rgba(255,255,255,.07);color:var(--tx3)}.c-ok-btn.idle:hover{background:rgba(77,255,195,.1);color:var(--gr)}
+.c-ok-btn.done{background:var(--grd);color:var(--gr);border:1px solid rgba(77,255,195,.3)}
+.c-totais{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:rgba(255,255,255,.04);border-radius:8px;padding:8px;border:1px solid var(--b);margin-bottom:8px}
+.c-tot-item{text-align:center}
+.c-tot-l{font-size:7px;text-transform:uppercase;color:var(--tx3);margin-bottom:2px}
+.c-tot-v{font-size:14px;font-weight:800;font-family:var(--mo)}
 /* CARGAS */
 .c-list{border-top:1px solid var(--b);padding-top:8px;margin-bottom:10px}
 .c-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:var(--tx3);margin-bottom:6px}
@@ -465,15 +489,20 @@ function renderKPIs(){
   setBar('bpp','bpr','lpp','lpr',pp,pr,'#4DFFC3');setBdg('bdg-p',pp,pr,'kg');
   // KM
   var kp=d.km_plan||0,kr=0,nKM=0,alerts=[];
+  // KM calculado por carga (hodômetro por viagem)
   Object.keys(eq).forEach(function(mot){
-    var le=LE[DIA][mot]||{};
-    if(le.hod_ini&&le.hod_ret&&+le.hod_ret>+le.hod_ini){
-      var kmR=Math.round((+le.hod_ret- +le.hod_ini)*10)/10;
-      kr+=kmR;nKM++;
-      var dif=Math.round((kmR-eq[mot].km_plan)*10)/10;
-      if(Math.abs(dif)>5)alerts.push(mot+': plan '+fN(eq[mot].km_plan,1)+' vs real '+fN(kmR,1)+' km ('+(dif>0?'+':'')+fN(dif,1)+' km)');
-    } else if(le.km_real){
-      kr+=+le.km_real;nKM++;
+    var kmMot=0,hasKM=false;
+    (eq[mot].cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini){
+        kmMot+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+        hasKM=true;
+      }
+    });
+    if(hasKM){
+      kr+=kmMot;nKM++;
+      var dif=Math.round((kmMot-eq[mot].km_plan)*10)/10;
+      if(Math.abs(dif)>5)alerts.push(mot+': plan '+fN(eq[mot].km_plan,1)+' vs real '+fN(kmMot,1)+' km ('+(dif>0?'+':'')+fN(dif,1)+' km)');
     }
   });
   kr=Math.round(kr*10)/10;
@@ -485,9 +514,13 @@ function renderKPIs(){
   // TEMPO
   var nEq=Object.keys(eq).length,nOkT=0,nOv=0,nReg=0;
   Object.keys(eq).forEach(function(mot){
-    var le=LE[DIA][mot]||{};
-    var hRR=le.h_ret_real||null;
-    if(!hRR){var best=null;(eq[mot].cargas||[]).forEach(function(c){if(c.h_ret_real){var t=hm2min(c.h_ret_real);if(!best||t>best){best=t;hRR=c.h_ret_real;}}});}
+    // Retorno real = o mais tarde entre todos os retornos das cargas
+    var hRR=null,best=null;
+    (eq[mot].cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      var ret=lc.h_ret_real||c.h_ret_real||null;
+      if(ret){var t=hm2min(ret);if(!best||t>best){best=t;hRR=ret;}}
+    });
     if(hRR){nReg++;if(hm2min(hRR)<=LIMITE)nOkT++;else nOv++;}
   });
   document.getElementById('vt-ok').textContent=nReg?nOkT:'---';
@@ -578,23 +611,51 @@ function renderEquipes(){
     html+='<div class="psi"><div class="psl">Limite</div><div class="psv">17:00</div></div>';
     html+='<div class="psi"><div class="psl">KM plan.</div><div class="psv">'+fN(E.km_plan,1)+' km</div></div>';
     html+='<div class="psi"><div class="psl">Peso plan.</div><div class="psv">'+fN(E.peso_plan)+' kg</div></div></div>';
-    // Lançamento
-    html+='<div class="real-grid">';
-    html+='<div class="rf"><div class="rl">Hodometro saida</div><input type="number" class="inp" placeholder="km inicial" value="'+(le.hod_ini||'')+'" oninput="setHod(\''+mot+'\',\'hod_ini\',this.value)"></div>';
-    html+='<div class="rf"><div class="rl">Hodometro retorno</div><input type="number" class="inp" placeholder="km final" value="'+(le.hod_ret||'')+'" oninput="setHod(\''+mot+'\',\'hod_ret\',this.value)"></div>';
-    html+='<div class="rf"><div class="rl">Retorno real '+(fusionRet?'<span class="ftag f">Fusion</span>':'')+'</div><input type="time" class="inp'+(fusionRet?' f-ok':!hRR?' ':'')+'" value="'+(le.h_ret_real||hRR||'')+'" onchange="setRet(\''+mot+'\',this.value)"></div>';
-    html+='</div>';
+    // Lançamento por carga (abaixo)
     // KM calculado
     if(kmReal!==null)html+='<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:10px;font-family:var(--mo)"><span style="color:var(--tx3)">KM real calculado:</span><span style="font-weight:700;color:'+(kmAlert?'var(--am)':'var(--gr)')+'">'+fN(kmReal,1)+' km</span>'+(kmDif!==null?'<span style="color:'+(kmDif>5?'var(--rd)':kmDif<-5?'var(--am)':'var(--tx3)')+'">'+(kmDif>0?'+':'')+fN(kmDif,1)+' km</span>':'')+'</div>';
-    // Cargas
-    html+='<div class="c-list"><div class="c-lbl">Cargas da equipe</div>';
+        // Cargas — hodômetro e peso por carga
+    var kmTotalC=0,pesoTotalC=0,nCOk=0;
+    (E.cargas||[]).forEach(function(c){
+      var lc=LC[DIA][c.id]||{};
+      var kmR=null;
+      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+      if(kmR)kmTotalC+=kmR;
+      if(lc.ok)pesoTotalC+=+(lc.peso_real||c.peso_plan);
+      if(lc.ok)nCOk++;
+    });
+    html+='<div style="margin-bottom:8px"><div class="c-lbl" style="margin-bottom:6px">Cargas da equipe</div>';
     (E.cargas||[]).forEach(function(c){
       var lc=LC[DIA][c.id]||{};
       var isRec=c.tipo==='recarga';
-      var tag=c.h_ret_real?'<span class="ftag f">F</span>':'<span class="ftag m">M</span>';
-      html+='<div class="c-row"><div><span class="c-rota">'+(isRec?'&#128260; ':'')+c.rota+'</span><span class="c-id">'+c.id+'</span><div class="c-det">VDA '+c.vda+' &middot; '+c.h_saida_plan+'&#8594;'+(c.h_ret_plan||'---')+' &middot; '+fN(c.km_plan,1)+' km &middot; '+fN(c.peso_plan)+' kg '+tag+'</div></div>';
-      html+='<div class="c-right"><input type="number" class="inp-p" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" oninput="setPeso(\''+c.id+'\',this.value)"><button class="bok '+(lc.ok?'done':'idle')+'" onclick="togCOk(\''+c.id+'\')">'+(lc.ok?'&#10003;':'OK')+'</button></div></div>';
+      var hasFR=!!c.h_ret_real;
+      var kmR=null;
+      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+      var kmDif=kmR!==null?Math.round((kmR-c.km_plan)*10)/10:null;
+      var kmAlert=kmDif!==null&&Math.abs(kmDif)>5;
+      html+='<div class="c-block'+(lc.ok?' ok':'')+(isRec?' rec':'')+'">';
+      html+='<div class="c-block-top"><div class="c-block-title">';
+      html+='<span class="c-block-rota">'+c.rota+'</span>';
+      html+='<span class="c-block-id">'+c.id+'</span>';
+      html+='<span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'&#128260; Recarga':'1&#170; Carga')+'</span>';
+      html+='<span style="font-size:8px;color:var(--tx3)">VDA '+c.vda+(hasFR?' <span class=\"ftag f\">F</span>':'<span class=\"ftag m\"> M</span>')+'</span></div>';
+      html+='<div class="c-block-plan">Plan: '+c.h_saida_plan+'&#8594;'+(c.h_ret_plan||'---')+' &middot; '+fN(c.km_plan,1)+' km &middot; '+fN(c.peso_plan)+' kg</div>';
+      html+='</div>';
+      html+='<div class="c-grid">';
+      html+='<div class="c-f"><div class="c-l">Hodom. saida</div><input type="number" class="c-inp" placeholder="ini" value="'+(lc.hod_ini||'')+'" oninput="setCargaHod(''+c.id+'','hod_ini',this.value)"></div>';
+      html+='<div class="c-f"><div class="c-l">Hodom. retorno</div><input type="number" class="c-inp" placeholder="fim" value="'+(lc.hod_ret||'')+'" oninput="setCargaHod(''+c.id+'','hod_ret',this.value)"></div>';
+      html+='<div class="c-f"><div class="c-l">KM real</div><div class="c-calc" style="color:'+(kmR!==null?kmAlert?'var(--am)':'var(--gr)':'var(--tx3)')+'"><span style="font-size:12px;font-weight:700">'+( kmR!==null?fN(kmR,1)+' km':'---')+'</span>'+(kmDif!==null?'<span style="font-size:8px;color:'+(kmDif>5?'var(--rd)':kmDif<-5?'var(--am)':'var(--tx3)')+'">'+(kmDif>0?'+':'')+fN(kmDif,1)+'</span>':'')+'</div></div>';
+      html+='<div class="c-f"><div class="c-l">Retorno real '+(hasFR?'<span class=\"ftag f\">F</span>':'')+' </div><input type="time" class="c-inp'+(hasFR?' f-ok':'')+'" value="'+(lc.h_ret_real||c.h_ret_real||'')+'" onchange="setCargaRet(''+c.id+'','h_ret_real',this.value)"></div>';
+      html+='<div class="c-f"><div class="c-l">Peso real</div><input type="number" class="c-inp" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" oninput="setPeso(''+c.id+'',this.value)"></div>';
+      html+='</div>';
+      html+='<button class="c-ok-btn '+(lc.ok?'done':'idle')+'" onclick="togCOk(''+c.id+'')">'+(lc.ok?'&#10003; Confirmado':'Confirmar carga')+'</button>';
+      html+='</div>';
     });
+    html+='<div class="c-totais">';
+    html+='<div class="c-tot-item"><div class="c-tot-l">KM total equipe</div><div class="c-tot-v" style="color:var(--am)">'+( kmTotalC?fN(kmTotalC,1)+' km':'---')+'</div></div>';
+    html+='<div class="c-tot-item"><div class="c-tot-l">Peso confirmado</div><div class="c-tot-v" style="color:var(--gr)">'+( pesoTotalC?fN(pesoTotalC)+' kg':'---')+'</div></div>';
+    html+='<div class="c-tot-item"><div class="c-tot-l">Cargas OK</div><div class="c-tot-v" style="color:'+(nCOk===(E.cargas||[]).length&&nCOk>0?'var(--gr)':'var(--am)')+'">'+nCOk+'/'+(E.cargas||[]).length+'</div></div>';
+    html+='</div></div>';
     html+='</div>';
     html+='<div class="eq-footer"><button class="btn-eq '+(isOk?'done':'idle')+'" onclick="togEq(\''+mot+'\')">'+(isOk?'&#10003; Equipe OK':'&#10003; Confirmar equipe')+'</button></div>';
     html+='</div>';
@@ -602,6 +663,20 @@ function renderEquipes(){
   el.innerHTML=html;
 }
 
+function setCargaHod(cid,campo,v){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  LC[DIA][cid][campo]=v;
+  renderKPIs();renderEquipes();
+  if(campo==='hod_ret')sbSaveDia(DIA);
+}
+function setCargaRet(cid,campo,v){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  LC[DIA][cid][campo]=v;
+  renderKPIs();renderEquipes();
+  sbSaveDia(DIA);
+}
 function setHod(mot,campo,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot][campo]=v;renderKPIs();renderEquipes();if(campo==='hod_ret')sbSaveDia(DIA);}
 function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();sbSaveDia(DIA);}
 function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();}
