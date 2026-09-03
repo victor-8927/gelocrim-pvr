@@ -152,6 +152,12 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
 .pvr-table .real-inp.f{border-color:rgba(77,255,195,.3);color:var(--gr)}
 .pvr-table .dif{font-size:9px;font-weight:700;font-family:var(--mo)}
 .dif-ok{color:var(--gr)}.dif-warn{color:var(--am)}.dif-bad{color:var(--rd)}.dif-nd{color:var(--tx3)}
+.c-block.cancelada{border-color:rgba(255,128,144,.4);background:rgba(255,128,144,.04);opacity:.7}
+.c-block.cancelada .c-block-rota{text-decoration:line-through;color:var(--rd)}
+.cancel-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:8px;font-weight:700;background:var(--rdd);color:var(--rd);border:1px solid rgba(255,128,144,.3)}
+.btn-cancel{padding:3px 8px;border-radius:5px;font-size:8px;font-weight:700;cursor:pointer;border:1px solid rgba(255,128,144,.4);background:rgba(255,128,144,.08);color:var(--rd);font-family:var(--mo)}
+.btn-cancel:hover{background:rgba(255,128,144,.2)}
+.btn-uncancel{padding:3px 8px;border-radius:5px;font-size:8px;font-weight:700;cursor:pointer;border:1px solid rgba(255,209,102,.4);background:rgba(255,209,102,.08);color:var(--am);font-family:var(--mo)}
 .eq-sumario{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:rgba(255,255,255,.05);border-radius:9px;padding:10px;border:1px solid var(--b);margin-bottom:10px}
 .eq-sum-item{text-align:center}
 .eq-sum-l{font-size:7px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px;letter-spacing:.05em}
@@ -493,16 +499,19 @@ function renderKPIs(){
   if(!DIA)return;
   var d=D[DIA]||{},eq=d.equipes||{};
   // PESO
-  var pp=d.peso_plan_pv||0,pr=0,nOk=0,tot=0;
+  var pp=d.peso_plan_pv||0,pr=0,nOk=0,tot=0,pesoCan=0,nCan=0;
   Object.values(eq).forEach(function(E){
     E.cargas.forEach(function(c){
       tot++;
       var lc=LC[DIA][c.id]||{};
+      if(lc.cancelada){pesoCan+=c.peso_plan;nCan++;return;}
       if(lc.ok){pr+=(lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan);nOk++;}
     });
   });
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
-  document.getElementById('vpr-s').textContent=nOk+'/'+tot+' cargas conf.';
+  var txtP=nOk+'/'+tot+' conf.';
+  if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
+  document.getElementById('vpr-s').textContent=txtP;
   setBar('bpp','bpr','lpp','lpr',pp,pr,'#4DFFC3');setBdg('bdg-p',pp,pr,'kg');
   // KM
   var kp=d.km_plan||0,kr=0,nKM=0,alerts=[];
@@ -632,10 +641,11 @@ function renderEquipes(){
     // KM calculado
     if(kmReal!==null)html+='<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:10px;font-family:var(--mo)"><span style="color:var(--tx3)">KM real calculado:</span><span style="font-weight:700;color:'+(kmAlert?'var(--am)':'var(--gr)')+'">'+fN(kmReal,1)+' km</span>'+(kmDif!==null?'<span style="color:'+(kmDif>5?'var(--rd)':kmDif<-5?'var(--am)':'var(--tx3)')+'">'+(kmDif>0?'+':'')+fN(kmDif,1)+' km</span>':'')+'</div>';
         // Cargas — tabela PVR: Planejado vs Realizado por viagem
-    var kmTotalC=0,pesoTotalC=0,nCOk=0;
+    var kmTotalC=0,pesoTotalC=0,nCOk=0,pesoCancelado=0,nCancelada=0;
     var hSaida1aReal=null,hRetUltReal=null,hRetUltPlan=null;
     (E.cargas||[]).forEach(function(c){
       var lc=(LC[DIA]||{})[c.id]||{};
+      if(lc.cancelada){pesoCancelado+=c.peso_plan;nCancelada++;return;}
       var kmR=null;
       if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
       if(kmR)kmTotalC+=kmR;
@@ -719,9 +729,15 @@ function renderEquipes(){
       html+='<span class="c-block-id">'+c.id+'</span>';
       html+='<span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'&#128260; Recarga':'1&#170; Carga')+'</span>';
       html+='<span style="font-size:8px;color:var(--tx3)">VDA '+c.vda+(hasFR?' <span class="ftag f">F</span>':' <span class="ftag m">M</span>')+'</span>';
+      html+='</div><div style="display:flex;align-items:center;gap:5px">';
+      if(isCan)html+='<span class="cancel-badge">&#10005; CANCELADA</span>';
+      html+='<button class="'+(isCan?'btn-uncancel':'btn-cancel')+'" onclick="togCancel(\''+c.id+'\')">'+(isCan?'&#8617; Reativar':'&#10005; Cancelar')+'</button>';
       html+='</div></div>';
 
       // Tabela PVR da carga
+      if(isCan){
+        html+='<div style="text-align:center;padding:10px;color:var(--rd);font-size:10px;font-weight:600">Carga cancelada — '+fN(c.peso_plan)+' kg retirados do total</div>';
+      }else{
       html+='<table class="pvr-table"><thead><tr>';
       html+='<th>Indicador</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferença</th><th></th>';
       html+='</tr></thead><tbody>';
@@ -768,6 +784,7 @@ function renderEquipes(){
       html+='</tr>';
 
       html+='</tbody></table>';
+      }// end if !cancelada
       html+='</div>';
     });
     html+='</div>';
@@ -777,6 +794,13 @@ function renderEquipes(){
   el.innerHTML=html;
 }
 
+function togCancel(cid){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  LC[DIA][cid].cancelada=!LC[DIA][cid].cancelada;
+  if(LC[DIA][cid].cancelada)LC[DIA][cid].ok=false;
+  renderEquipes();renderKPIs();sbSaveDia(DIA);
+}
 function setCargaHod(cid,campo,v){
   if(!DIA)return;
   if(!LC[DIA][cid])LC[DIA][cid]={};
