@@ -559,7 +559,7 @@ function renderKPIs(){
   var nOkEq=Object.keys(eq).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
   var enc=document.getElementById('enc-btn');
   enc.disabled=(LD[DIA]||{}).locked;
-  enc.textContent=(LD[DIA]||{}).locked?'&#128274; Encerrado':'&#128274; Encerrar ('+nOkEq+'/'+nEq+' OK)';
+  enc.innerHTML=(LD[DIA]||{}).locked?'&#128274; Encerrado':'&#128274; Encerrar ('+nOkEq+'/'+nEq+' OK)';
 }
 
 function setV(id,val,unit){var el=document.getElementById(id);if(el)el.innerHTML=val+'<span class="du">'+unit+'</span>';}
@@ -589,210 +589,163 @@ function saveObs(){if(!DIA||!LD[DIA])return;LD[DIA].obs_p=document.getElementByI
 
 function renderEquipes(){
   var el=document.getElementById('eq-cards');
-  if(!DIA||!D[DIA]){el.innerHTML='<div class="nodata">Selecione um dia</div>';return;}
-  var eqs=D[DIA].equipes||{},ld=LD[DIA]||{};
+  if(!DIA||!D[DIA]){el.innerHTML='<div class="nodata">Selecione um dia acima</div>';return;}
+  var eqs=D[DIA].equipes||{};
   var nEq=Object.keys(eqs).length;
   var nOk=Object.keys(eqs).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
   document.getElementById('eq-title').textContent=DIA.split('-').reverse().join('/')+' - '+nEq+' equipes';
   document.getElementById('eq-prog').innerHTML='<b>'+nOk+'</b>/'+nEq+' OK';
   var html='';
-  Object.keys(eqs).sort().forEach(function(mot){
-    var E=eqs[mot],le=LE[DIA][mot]||{};
-    var isOk=le.ok||false;
-    // KM
-    var kmReal=le.km_real?+le.km_real:null;
-    if(!kmReal&&le.hod_ini&&le.hod_ret&&+le.hod_ret>+le.hod_ini)kmReal=Math.round((+le.hod_ret- +le.hod_ini)*10)/10;
-    var kmDif=kmReal!==null?Math.round((kmReal-E.km_plan)*10)/10:null;
-    var kmAlert=kmDif!==null&&Math.abs(kmDif)>5;
-    // Retorno real
-    var hRR=le.h_ret_real||null;
-    var fusionRet=false;
-    if(!hRR){var best=null;(E.cargas||[]).forEach(function(c){if(c.h_ret_real){var t=hm2min(c.h_ret_real);if(!best||t>best){best=t;hRR=c.h_ret_real;}}});if(hRR)fusionRet=true;}
-    // Tempo vs 17:00
-    var hRRmin=hm2min(hRR);
-    var isOver=hRRmin!==null&&hRRmin>LIMITE;
-    var extraMin=isOver?hRRmin-LIMITE:0;
-    // Barra
-    var hSPmin=hm2min(E.h_saida_plan)||420;
-    var janela=LIMITE-hSPmin;
-    var trab=hRRmin?Math.min(hRRmin-hSPmin,janela+extraMin):0;
-    var barW=janela>0?Math.min(trab/janela*100,130):0;
-    var barCol=isOver?'#FF8090':trab>janela*0.92?'#FFD166':'#4DFFC3';
-    var cls='eq-card'+(isOk?' ok':'')+(isOver?' over':'')+(kmAlert&&!isOk?' km-alert':'');
-    var retCls=hRRmin===null?'nd':isOver?'over':'ok';
 
-    html+='<div class="'+cls+'">';
-    html+='<div class="eq-top"><div><div class="eq-nome">'+mot+'</div><div class="eq-sub">VDA: '+(E.vdas||[]).join(', ')+' &nbsp;|&nbsp; '+(E.equipe||[]).join(' / ')+'</div></div>';
-    html+='<div class="eq-ret"><div class="eq-ret-lbl">Retorno vs 17:00</div><div class="eq-ret-val '+retCls+'">'+(hRR||'---')+(isOver?' (+'+min2hm(extraMin)+')':hRRmin!==null?' &#10003;':'')+'</div></div></div>';
-    // Barra 17:00
-    var barLabel=hRRmin?min2hm(trab)+(isOver?' +'+min2hm(extraMin)+' extra':''):'Aguardando';
-    html+='<div class="bar17"><div class="bar17-lbl"><span>'+(E.h_saida_plan||'--:--')+'</span><span style="color:'+(isOver?'var(--rd)':'var(--tx3)')+'">'+barLabel+'</span><span style="color:rgba(255,128,144,.7)">17:00</span></div>';
-    html+='<div class="bar17-track"><div class="bar17-fill" style="width:'+Math.min(barW,100)+'%;background:'+barCol+'">'+(barW>20?barLabel:'')+'</div></div></div>';
-    // Alertas
-    if(isOver)html+='<div class="alrt over">&#9888; Retornou '+hRR+' — '+min2hm(extraMin)+' apos 17:00</div>';
-    else if(hRRmin!==null)html+='<div class="alrt ok">&#10003; Retornou '+hRR+' — dentro do horario</div>';
-    if(kmAlert)html+='<div class="alrt km">&#9888; KM: plan '+fN(E.km_plan,1)+' vs real '+fN(kmReal,1)+' km ('+(kmDif>0?'+':'')+fN(kmDif,1)+' km)</div>';
-    // Planejado
-    html+='<div class="pstrip"><div class="psi"><div class="psl">Saida plan.</div><div class="psv">'+(E.h_saida_plan||'---')+'</div></div>';
-    html+='<div class="psi"><div class="psl">Limite</div><div class="psv">17:00</div></div>';
-    html+='<div class="psi"><div class="psl">KM plan.</div><div class="psv">'+fN(E.km_plan,1)+' km</div></div>';
-    html+='<div class="psi"><div class="psl">Peso plan.</div><div class="psv">'+fN(E.peso_plan)+' kg</div></div></div>';
-    // Lançamento por carga (abaixo)
-    // KM calculado
-    if(kmReal!==null)html+='<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:10px;font-family:var(--mo)"><span style="color:var(--tx3)">KM real calculado:</span><span style="font-weight:700;color:'+(kmAlert?'var(--am)':'var(--gr)')+'">'+fN(kmReal,1)+' km</span>'+(kmDif!==null?'<span style="color:'+(kmDif>5?'var(--rd)':kmDif<-5?'var(--am)':'var(--tx3)')+'">'+(kmDif>0?'+':'')+fN(kmDif,1)+' km</span>':'')+'</div>';
-        // Cargas — tabela PVR: Planejado vs Realizado por viagem
+  Object.keys(eqs).sort().forEach(function(mot){
+    var E=eqs[mot],le=LE[DIA][mot]||{},isOk=le.ok||false;
+
+    // Pre-calcular sumario
     var kmTotalC=0,pesoTotalC=0,nCOk=0,pesoCancelado=0,nCancelada=0;
     var hSaida1aReal=null,hRetUltReal=null,hRetUltPlan=null;
     (E.cargas||[]).forEach(function(c){
       var lc=(LC[DIA]||{})[c.id]||{};
       if(lc.cancelada){pesoCancelado+=c.peso_plan;nCancelada++;return;}
       var kmR=null;
-      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)
+        kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
       if(kmR)kmTotalC+=kmR;
       if(lc.ok)pesoTotalC+=+(lc.peso_real||c.peso_plan);
       if(lc.ok)nCOk++;
-      // Saída real da 1ª carga
       var hSR=lc.h_saida_real||c.h_saida_real||null;
-      if(hSR&&(!hSaida1aReal||hSR<hSaida1aReal))hSaida1aReal=hSR;
-      // Retorno real e planejado mais tarde
       var hRR=lc.h_ret_real||c.h_ret_real||null;
+      if(hSR&&(!hSaida1aReal||hSR<hSaida1aReal))hSaida1aReal=hSR;
       if(hRR&&(!hRetUltReal||hRR>hRetUltReal))hRetUltReal=hRR;
       if(c.h_ret_plan&&(!hRetUltPlan||c.h_ret_plan>hRetUltPlan))hRetUltPlan=c.h_ret_plan;
     });
 
-    // Sumário da equipe
     var hIniPlan=E.h_saida_plan||'07:00';
-    var hIniReal=hSaida1aReal||null;
-    var hRetPlan=hRetUltPlan||null;
-    var hRetReal=hRetUltReal||null;
-    var tPlanMin=hRetPlan?hm2min(hRetPlan)-hm2min(hIniPlan):null;
-    var tRealMin=hRetReal?hm2min(hRetReal)-hm2min(hIniPlan):null;
-    var extrasMin=hRetReal?Math.max(0,hm2min(hRetReal)-LIMITE):null;
-    var folgaMin=hRetReal?Math.max(0,LIMITE-hm2min(hRetReal)):null;
-    var atSaidaMin=hIniReal?hm2min(hIniReal)-hm2min(hIniPlan):null;
-    var atRetMin=hRetReal&&hRetPlan?hm2min(hRetReal)-hm2min(hRetPlan):null;
+    var tPlanMin=hRetUltPlan?hm2min(hRetUltPlan)-hm2min(hIniPlan):null;
+    var tRealMin=hRetUltReal?hm2min(hRetUltReal)-hm2min(hIniPlan):null;
+    var extrasMin=hRetUltReal?Math.max(0,hm2min(hRetUltReal)-LIMITE):null;
+    var folgaMin=hRetUltReal?Math.max(0,LIMITE-hm2min(hRetUltReal)):null;
+    var atSaidaMin=hSaida1aReal?hm2min(hSaida1aReal)-hm2min(hIniPlan):null;
+    var atRetMin=hRetUltReal&&hRetUltPlan?hm2min(hRetUltReal)-hm2min(hRetUltPlan):null;
     var kmDifEq=kmTotalC?Math.round((kmTotalC-(E.km_plan||0))*10)/10:null;
+    var isOver=hRetUltReal&&hm2min(hRetUltReal)>LIMITE;
 
+    // Card equipe
+    html+='<div class="eq-card'+(isOk?' ok':'')+(isOver?' over':'')+(kmDifEq&&Math.abs(kmDifEq)>5&&!isOk?' km-alert':'')+'">';
+
+    // Topo
+    html+='<div class="eq-top">';
+    html+='<div><div class="eq-nome">'+mot+'</div>';
+    html+='<div class="eq-sub">VDA: '+(E.vdas||[]).join(', ')+' | '+(E.equipe||[]).join(' / ')+'</div></div>';
+    html+='<div class="eq-ret"><div class="eq-ret-lbl">Retorno vs 17:00</div>';
+    html+='<div class="eq-ret-val '+(hRetUltReal?(isOver?'over':'ok'):'nd')+'">'+(hRetUltReal||'---')+(isOver?' (+'+min2hm(extrasMin)+')':hRetUltReal?' \u2713':'')+'</div></div>';
+    html+='</div>';
+
+    // Sumario 5 colunas
     html+='<div class="eq-sumario">';
-    // Saída
     html+='<div class="eq-sum-item"><div class="eq-sum-l">Saida plan./real</div>';
     html+='<div class="eq-sum-v" style="color:var(--tx2)">'+hIniPlan+'</div>';
-    html+='<div class="eq-sum-v" style="color:'+(hIniReal?(atSaidaMin>15?'var(--am)':'var(--gr)'):'var(--tx3)')+'">'+( hIniReal||'---')+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(hSaida1aReal?(atSaidaMin>15?'var(--am)':'var(--gr)'):'var(--tx3)')+'">'+( hSaida1aReal||'---')+'</div>';
     html+='<div class="eq-sum-d dif-'+(atSaidaMin===null?'nd':atSaidaMin>30?'bad':atSaidaMin>0?'warn':'ok')+'">'+(atSaidaMin!==null?(atSaidaMin>0?'+':'')+min2hm(Math.abs(atSaidaMin)):'--')+'</div></div>';
-    // Retorno
+
     html+='<div class="eq-sum-item"><div class="eq-sum-l">Retorno plan./real</div>';
-    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+( hRetPlan||'---')+'</div>';
-    html+='<div class="eq-sum-v" style="color:'+(hRetReal?(hm2min(hRetReal)>LIMITE?'var(--rd)':'var(--gr)'):'var(--tx3)')+'">'+( hRetReal||'---')+'</div>';
+    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+( hRetUltPlan||'---')+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(hRetUltReal?(isOver?'var(--rd)':'var(--gr)'):'var(--tx3)')+'">'+( hRetUltReal||'---')+'</div>';
     html+='<div class="eq-sum-d dif-'+(atRetMin===null?'nd':atRetMin>60?'bad':atRetMin>0?'warn':'ok')+'">'+(atRetMin!==null?(atRetMin>0?'+':'')+min2hm(Math.abs(atRetMin)):'--')+'</div></div>';
-    // Tempo total
+
     html+='<div class="eq-sum-item"><div class="eq-sum-l">Tempo plan./real</div>';
     html+='<div class="eq-sum-v" style="color:var(--tx2)">'+( tPlanMin?min2hm(tPlanMin):'---')+'</div>';
-    html+='<div class="eq-sum-v" style="color:'+(tRealMin?(tRealMin>600?'var(--rd)':'var(--gr)'):'var(--tx3)')+'">'+( tRealMin?min2hm(tRealMin):'---')+'</div>';
-    html+='<div class="eq-sum-d '+(extrasMin?'dif-bad':'dif-ok')+'">'+(extrasMin?'+'+min2hm(extrasMin)+' extra':(folgaMin?min2hm(folgaMin)+' folga':'--'))+'</div></div>';
-    // KM
+    html+='<div class="eq-sum-v" style="color:'+(tRealMin?(isOver?'var(--rd)':'var(--gr)'):'var(--tx3)')+'">'+( tRealMin?min2hm(tRealMin):'---')+'</div>';
+    html+='<div class="eq-sum-d '+(extrasMin&&extrasMin>0?'dif-bad':'dif-ok')+'">'+(extrasMin&&extrasMin>0?'+'+min2hm(extrasMin)+' extra':(folgaMin&&folgaMin>0?min2hm(folgaMin)+' folga':'--'))+'</div></div>';
+
     html+='<div class="eq-sum-item"><div class="eq-sum-l">KM plan./real</div>';
     html+='<div class="eq-sum-v" style="color:var(--tx2)">'+fN(E.km_plan,1)+'</div>';
     html+='<div class="eq-sum-v" style="color:'+(kmTotalC?Math.abs(kmDifEq||0)>5?'var(--am)':'var(--gr)':'var(--tx3)')+'">'+( kmTotalC?fN(kmTotalC,1):'---')+'</div>';
     html+='<div class="eq-sum-d dif-'+(kmDifEq===null?'nd':Math.abs(kmDifEq)>5?'bad':'ok')+'">'+(kmDifEq!==null?(kmDifEq>0?'+':'')+fN(kmDifEq,1)+' km':'--')+'</div></div>';
-    // Peso
+
     html+='<div class="eq-sum-item"><div class="eq-sum-l">Peso plan./conf.</div>';
     html+='<div class="eq-sum-v" style="color:var(--tx2)">'+fN(E.peso_plan)+'</div>';
     html+='<div class="eq-sum-v" style="color:'+(pesoTotalC?'var(--gr)':'var(--tx3)')+'">'+( pesoTotalC?fN(pesoTotalC):'---')+'</div>';
-    html+='<div class="eq-sum-d">'+nCOk+'/'+(E.cargas||[]).length+' OK</div></div>';
+    html+='<div class="eq-sum-d">'+(nCancelada?'<span style="color:var(--rd)">-'+fN(pesoCancelado)+' canc.</span> ':'')+nCOk+'/'+(E.cargas||[]).length+' OK</div></div>';
     html+='</div>';
 
-    // Tabela por carga
-    html+='<div style="margin-bottom:8px"><div class="c-lbl" style="margin-bottom:6px">Planejado vs Realizado por viagem</div>';
+    // Cargas
+    html+='<div><div class="c-lbl" style="margin-bottom:6px">Planejado vs Realizado por viagem</div>';
     (E.cargas||[]).forEach(function(c){
       var lc=(LC[DIA]||{})[c.id]||{};
+      var isCan=lc.cancelada||false;
       var isRec=c.tipo==='recarga';
       var hasFR=!!c.h_ret_real;
-      // KM
-      var kmR=null;
-      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
-      var kmDif=kmR!==null?Math.round((kmR-c.km_plan)*10)/10:null;
-      // Tempo
-      var hSP=c.h_saida_plan,hRP=c.h_ret_plan;
-      var hSR=lc.h_saida_real||c.h_saida_real||null;
-      var hRR=lc.h_ret_real||c.h_ret_real||null;
-      var tPlanM=hSP&&hRP?hm2min(hRP)-hm2min(hSP):null;
-      var tRealM=hSR&&hRR?hm2min(hRR)-hm2min(hSR):null;
-      var atSM=hSR?hm2min(hSR)-hm2min(hSP):null;
-      var atRM=hRR&&hRP?hm2min(hRR)-hm2min(hRP):null;
-      // Peso
-      var pesoR=lc.peso_real?+lc.peso_real:null;
-      var pesoDif=pesoR!==null?Math.round(pesoR-c.peso_plan):null;
 
-      html+='<div class="c-block'+(lc.ok?' ok':'')+(isRec?' rec':'')+'">';
+      html+='<div class="c-block'+(isCan?' cancelada':lc.ok?' ok':'')+(isRec?' rec':'')+'">';
       html+='<div class="c-block-top"><div class="c-block-title">';
       html+='<span class="c-block-rota">'+c.rota+'</span>';
       html+='<span class="c-block-id">'+c.id+'</span>';
-      html+='<span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'&#128260; Recarga':'1&#170; Carga')+'</span>';
+      html+='<span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'Recarga':'1a Carga')+'</span>';
       html+='<span style="font-size:8px;color:var(--tx3)">VDA '+c.vda+(hasFR?' <span class="ftag f">F</span>':' <span class="ftag m">M</span>')+'</span>';
       html+='</div><div style="display:flex;align-items:center;gap:5px">';
-      if(isCan)html+='<span class="cancel-badge">&#10005; CANCELADA</span>';
-      html+='<button class="'+(isCan?'btn-uncancel':'btn-cancel')+'" onclick="togCancel(\''+c.id+'\')">'+(isCan?'&#8617; Reativar':'&#10005; Cancelar')+'</button>';
+      if(isCan)html+='<span class="cancel-badge">CANCELADA</span>';
+      html+='<button class="'+(isCan?'btn-uncancel':'btn-cancel')+'" onclick="togCancel(\''+c.id+'\')">'+(isCan?'Reativar':'Cancelar')+'</button>';
       html+='</div></div>';
 
-      // Tabela PVR da carga
       if(isCan){
-        html+='<div style="text-align:center;padding:10px;color:var(--rd);font-size:10px;font-weight:600">Carga cancelada — '+fN(c.peso_plan)+' kg retirados do total</div>';
+        html+='<div style="text-align:center;padding:8px;color:var(--rd);font-size:10px;font-weight:600">Cancelada — '+fN(c.peso_plan)+' kg retirados do total</div>';
       }else{
-      html+='<table class="pvr-table"><thead><tr>';
-      html+='<th>Indicador</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferença</th><th></th>';
-      html+='</tr></thead><tbody>';
+        var kmR=null;
+        if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)
+          kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+        var kmDif=kmR!==null?Math.round((kmR-c.km_plan)*10)/10:null;
+        var hSP=c.h_saida_plan,hRP=c.h_ret_plan;
+        var hSR=lc.h_saida_real||c.h_saida_real||null;
+        var hRR=lc.h_ret_real||c.h_ret_real||null;
+        var tPlanM=hSP&&hRP?hm2min(hRP)-hm2min(hSP):null;
+        var tRealM=hSR&&hRR?hm2min(hRR)-hm2min(hSR):null;
+        var atSM=hSR?hm2min(hSR)-hm2min(hSP):null;
+        var atRM=hRR&&hRP?hm2min(hRR)-hm2min(hRP):null;
+        var tDif=tRealM!==null&&tPlanM!==null?tRealM-tPlanM:null;
+        var pesoR=lc.peso_real?+lc.peso_real:null;
+        var pesoDif=pesoR!==null?Math.round(pesoR-c.peso_plan):null;
 
-      // Saída
-      html+='<tr><td class="lbl">Saida</td>';
-      html+='<td class="r plan">'+hSP+'</td>';
-      html+='<td class="r"><input type="time" class="real-inp'+(hSR?' f':'')+'" value="'+(lc.h_saida_real||hSR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_saida_real\',this.value)"></td>';
-      html+='<td class="r"><span class="dif dif-'+(atSM===null?'nd':atSM>30?'bad':atSM>0?'warn':'ok')+'">'+(atSM!==null?(atSM>0?'+':'')+min2hm(Math.abs(atSM)):'---')+'</span></td>';
-      html+='<td></td></tr>';
+        html+='<table class="pvr-table"><thead><tr>';
+        html+='<th>Indicador</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferenca</th><th></th>';
+        html+='</tr></thead><tbody>';
 
-      // Retorno
-      html+='<tr><td class="lbl">Retorno</td>';
-      html+='<td class="r plan">'+( hRP||'---')+'</td>';
-      html+='<td class="r"><input type="time" class="real-inp'+(hRR?' f':'')+'" value="'+(lc.h_ret_real||hRR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_ret_real\',this.value)"></td>';
-      html+='<td class="r"><span class="dif dif-'+(atRM===null?'nd':atRM>30?'bad':atRM>0?'warn':'ok')+'">'+(atRM!==null?(atRM>0?'+':'')+min2hm(Math.abs(atRM)):'---')+'</span></td>';
-      html+='<td></td></tr>';
+        html+='<tr><td class="lbl">Saida</td><td class="r plan">'+hSP+'</td>';
+        html+='<td class="r"><input type="time" class="real-inp'+(hSR?' f':'')+'" value="'+(lc.h_saida_real||hSR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_saida_real\',this.value)"></td>';
+        html+='<td class="r"><span class="dif dif-'+(atSM===null?'nd':atSM>30?'bad':atSM>0?'warn':'ok')+'">'+(atSM!==null?(atSM>0?'+':'')+min2hm(Math.abs(atSM)):'---')+'</span></td><td></td></tr>';
 
-      // Tempo execução
-      html+='<tr><td class="lbl">Tempo execucao</td>';
-      html+='<td class="r plan">'+( tPlanM!==null?min2hm(tPlanM):'---')+'</td>';
-      html+='<td class="r" style="color:'+(tRealM!==null?'var(--tx)':'var(--tx3)')+'">'+( tRealM!==null?min2hm(tRealM):'---')+'</td>';
-      var tDif=tRealM!==null&&tPlanM!==null?tRealM-tPlanM:null;
-      html+='<td class="r"><span class="dif dif-'+(tDif===null?'nd':tDif>30?'bad':tDif>0?'warn':'ok')+'">'+(tDif!==null?(tDif>0?'+':'')+min2hm(Math.abs(tDif)):'---')+'</span></td>';
-      html+='<td></td></tr>';
+        html+='<tr><td class="lbl">Retorno</td><td class="r plan">'+( hRP||'---')+'</td>';
+        html+='<td class="r"><input type="time" class="real-inp'+(hRR?' f':'')+'" value="'+(lc.h_ret_real||hRR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_ret_real\',this.value)"></td>';
+        html+='<td class="r"><span class="dif dif-'+(atRM===null?'nd':atRM>30?'bad':atRM>0?'warn':'ok')+'">'+(atRM!==null?(atRM>0?'+':'')+min2hm(Math.abs(atRM)):'---')+'</span></td><td></td></tr>';
 
-      // KM
-      html+='<tr><td class="lbl">KM</td>';
-      html+='<td class="r plan">'+fN(c.km_plan,1)+' km</td>';
-      html+='<td class="r"><div style="display:flex;gap:3px;justify-content:flex-end;align-items:center">';
-      html+='<input type="number" class="real-inp" placeholder="ini" style="width:55px" value="'+(lc.hod_ini||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)">';
-      html+='<span style="color:var(--tx3);font-size:9px">&#8594;</span>';
-      html+='<input type="number" class="real-inp" placeholder="fim" style="width:55px" value="'+(lc.hod_ret||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)">';
-      html+='</div></td>';
-      html+='<td class="r"><span class="dif dif-'+(kmDif===null?'nd':Math.abs(kmDif)>5?'bad':'ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td>';
-      html+='<td></td></tr>';
+        html+='<tr><td class="lbl">Tempo exec.</td><td class="r plan">'+( tPlanM!==null?min2hm(tPlanM):'---')+'</td>';
+        html+='<td class="r" style="color:'+(tRealM!==null?'var(--tx)':'var(--tx3)')+'">'+( tRealM!==null?min2hm(tRealM):'---')+'</td>';
+        html+='<td class="r"><span class="dif dif-'+(tDif===null?'nd':tDif>30?'bad':tDif>0?'warn':'ok')+'">'+(tDif!==null?(tDif>0?'+':'')+min2hm(Math.abs(tDif)):'---')+'</span></td><td></td></tr>';
 
-      // Peso
-      html+='<tr><td class="lbl">Peso</td>';
-      html+='<td class="r plan">'+fN(c.peso_plan)+' kg</td>';
-      html+='<td class="r"><input type="number" class="real-inp" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" oninput="setPeso(\''+c.id+'\',this.value)"></td>';
-      html+='<td class="r"><span class="dif dif-'+(pesoDif===null?'nd':Math.abs(pesoDif)>500?'warn':'ok')+'">'+(pesoDif!==null?(pesoDif>0?'+':'')+fN(pesoDif)+' kg':'---')+'</span></td>';
-      html+='<td><button class="bok '+(lc.ok?'done':'idle')+'" style="font-size:8px;padding:4px 8px" onclick="togCOk(\''+c.id+'\')">'+(lc.ok?'&#10003;':'OK')+'</button></td>';
-      html+='</tr>';
+        html+='<tr><td class="lbl">KM</td><td class="r plan">'+fN(c.km_plan,1)+' km</td>';
+        html+='<td class="r"><div style="display:flex;gap:3px;justify-content:flex-end;align-items:center">';
+        html+='<input type="number" class="real-inp" placeholder="ini" style="width:55px" value="'+(lc.hod_ini||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)">';
+        html+='<span style="color:var(--tx3);font-size:9px">&#8594;</span>';
+        html+='<input type="number" class="real-inp" placeholder="fim" style="width:55px" value="'+(lc.hod_ret||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)">';
+        html+='</div></td>';
+        html+='<td class="r"><span class="dif dif-'+(kmDif===null?'nd':Math.abs(kmDif)>5?'bad':'ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td><td></td></tr>';
 
-      html+='</tbody></table>';
-      }// end if !cancelada
+        html+='<tr><td class="lbl">Peso</td><td class="r plan">'+fN(c.peso_plan)+' kg</td>';
+        html+='<td class="r"><input type="number" class="real-inp" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" oninput="setPeso(\''+c.id+'\',this.value)"></td>';
+        html+='<td class="r"><span class="dif dif-'+(pesoDif===null?'nd':Math.abs(pesoDif)>500?'warn':'ok')+'">'+(pesoDif!==null?(pesoDif>0?'+':'')+fN(pesoDif)+' kg':'---')+'</span></td>';
+        html+='<td><button class="bok '+(lc.ok?'done':'idle')+'" style="font-size:8px;padding:4px 8px" onclick="togCOk(\''+c.id+'\')">'+(lc.ok?'OK':'OK')+'</button></td></tr>';
+
+        html+='</tbody></table>';
+      }
       html+='</div>';
     });
     html+='</div>';
-        html+='<div class="eq-footer"><button class="btn-eq '+(isOk?'done':'idle')+'" onclick="togEq(\''+mot+'\')">'+(isOk?'&#10003; Equipe OK':'&#10003; Confirmar equipe')+'</button></div>';
+
+    html+='<div class="eq-footer"><button class="btn-eq '+(isOk?'done':'idle')+'" onclick="togEq(\''+mot+'\')">'+(isOk?'Equipe OK':'Confirmar equipe')+'</button></div>';
     html+='</div>';
   });
   el.innerHTML=html;
 }
+
 
 function togCancel(cid){
   if(!DIA)return;
