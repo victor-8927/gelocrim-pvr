@@ -747,6 +747,24 @@ function renderEquipes(){
 }
 
 
+function saveLocal(){
+  try{
+    localStorage.setItem('pvr_LE',JSON.stringify(LE));
+    localStorage.setItem('pvr_LC',JSON.stringify(LC));
+    localStorage.setItem('pvr_LD',JSON.stringify(LD));
+  }catch(e){console.warn('localStorage err',e);}
+}
+function loadLocal(){
+  try{
+    var le=localStorage.getItem('pvr_LE');
+    var lc=localStorage.getItem('pvr_LC');
+    var ld=localStorage.getItem('pvr_LD');
+    if(le)LE=JSON.parse(le);
+    if(lc)LC=JSON.parse(lc);
+    if(ld)LD=JSON.parse(ld);
+    console.log('Local carregado OK');
+  }catch(e){console.warn('loadLocal err',e);}
+}
 function togCancel(cid){
   if(!DIA)return;
   if(!LC[DIA][cid])LC[DIA][cid]={};
@@ -759,7 +777,7 @@ function setCargaHod(cid,campo,v){
   if(!LC[DIA][cid])LC[DIA][cid]={};
   LC[DIA][cid][campo]=v;
   renderKPIs();renderEquipes();
-  if(campo==='hod_ret')sbSaveDia(DIA);
+  if(campo==='hod_ret'){sbSaveDia(DIA);saveLocal();}
 }
 function setCargaRet(cid,campo,v){
   if(!DIA)return;
@@ -769,11 +787,11 @@ function setCargaRet(cid,campo,v){
   sbSaveDia(DIA);
 }
 function setHod(mot,campo,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot][campo]=v;renderKPIs();renderEquipes();if(campo==='hod_ret')sbSaveDia(DIA);}
-function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();sbSaveDia(DIA);}
+function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();sbSaveDia(DIA);saveLocal();}
 function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();}
-function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();}
-function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();sbSaveDia(DIA);}
-function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');sbSaveDia(DIA);buildDiaNav();selDia(DIA);}
+function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();sbSaveDia(DIA);saveLocal();}
+function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');sbSaveDia(DIA);saveLocal();buildDiaNav();selDia(DIA);}
 function exportar(){var blob=new Blob([JSON.stringify({D:D,LE:LE,LC:LC,LD:LD,ts:new Date().toISOString()})],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gelocrim_pvr_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();}
 
 function importFusion(file){
@@ -1008,6 +1026,7 @@ function importEnc(file){
 }
 
 window.addEventListener('load',function(){
+  loadLocal(); // restaurar dados do browser
   var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
   var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
   if(dias.length)selDia(dias[dias.length-1]);
