@@ -243,8 +243,15 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
   </div>
   <div class="kc t">
     <div class="kn">3 &#8212; Janela total (8h48 x equipes)</div>
+    <!-- Janela 07:00-17:00 -->
+    <div style="background:var(--s1);border-radius:8px;padding:8px;margin-bottom:8px;font-size:8px;color:var(--tx3);text-align:center">
+      <span style="color:var(--tx2);font-weight:700">07:00 &#8594; 17:00</span> &nbsp;|&nbsp;
+      Atividade: <span id="vt-ativ" style="color:rgba(192,132,252,.8);font-weight:700">---</span> &nbsp;|&nbsp;
+      Intervalo: <span id="vt-int" style="color:var(--tx3)">---</span> &nbsp;|&nbsp;
+      Total: <span id="vt-tot" style="color:var(--tx2);font-weight:700">---</span>
+    </div>
     <div class="duo">
-      <div class="dc"><div class="dl">Planejado</div><div class="dv" id="vt-plan" style="color:rgba(192,132,252,.7);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-plan-s">N equipes x 8h48</div></div>
+      <div class="dc"><div class="dl">Atividade planejada</div><div class="dv" id="vt-plan" style="color:rgba(192,132,252,.7);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-plan-s">N equipes x 8h48</div></div>
       <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vt-real" style="color:var(--rd);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-real-s">soma equipes</div></div>
     </div>
     <div class="duo" style="margin-bottom:8px">
@@ -575,7 +582,22 @@ function renderKPIs(){
   var difMin=(nReg===nEq)?realTotalMin-janTotalMin:null;
   var difH=difMin!==null?Math.round(difMin/60*10)/10:null;
 
-  // Exibir
+  // Calcular janela completa
+  var intTotalMin=nEq*72;  // intervalo: 1h12 = 72 min por equipe
+  var janCompletaMin=nEq*600; // janela total 07-17: 10h = 600 min
+  var ativH=Math.round(janTotalMin/60*10)/10;    // 8h48 x nEq
+  var intH=Math.round(intTotalMin/60*10)/10;      // 1h12 x nEq
+  var totH=Math.round(janCompletaMin/60*10)/10;   // 10h x nEq
+
+  // Exibir linha de resumo
+  var ea=document.getElementById('vt-ativ');
+  var ei=document.getElementById('vt-int');
+  var et=document.getElementById('vt-tot');
+  if(ea)ea.textContent=fN(ativH,1)+'h';
+  if(ei)ei.textContent=fN(intH,1)+'h';
+  if(et)et.textContent=fN(totH,1)+'h';
+
+  // Exibir KPI
   setV('vt-plan',janTotalH,'h');
   document.getElementById('vt-plan-s').textContent=nEq+' equipes x 8h48';
   setV('vt-real',realH!==null?realH:'---','h');
