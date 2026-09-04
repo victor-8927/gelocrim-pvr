@@ -593,14 +593,14 @@ function renderKPIs(){
   var ea=document.getElementById('vt-ativ');
   var ei=document.getElementById('vt-int');
   var et=document.getElementById('vt-tot');
-  if(ea)ea.textContent=fN(ativH,1)+'h';
-  if(ei)ei.textContent=fN(intH,1)+'h';
-  if(et)et.textContent=fN(totH,1)+'h';
+  if(ea)ea.textContent=min2hm(janTotalMin);
+  if(ei)ei.textContent=min2hm(intTotalMin);
+  if(et)et.textContent=min2hm(janCompletaMin);
 
   // Exibir KPI
-  setV('vt-plan',janTotalH,'h');
+  setV('vt-plan',min2hm(janTotalMin),'');
   document.getElementById('vt-plan-s').textContent=nEq+' equipes x 8h48';
-  setV('vt-real',realH!==null?realH:'---','h');
+  setV('vt-real',realH!==null?min2hm(realTotalMin):'---','');
   document.getElementById('vt-real-s').textContent=nReg+'/'+nEq+' equipes registradas';
   document.getElementById('vt-ok').textContent=nReg?nOkT:'---';
   document.getElementById('vt-ov').textContent=nReg?nOv:'---';
@@ -613,7 +613,7 @@ function renderKPIs(){
   }else{
     var cls=difMin>60?'b-bad':difMin>0?'b-warn':'b-ok';
     var sinal=difMin>0?'+':'';
-    bt.innerHTML='<span class="badge '+cls+'">'+(difMin>0?'&#9650;':'&#9660;')+' '+sinal+min2hm(Math.abs(difMin))+' ('+( difH>0?'+':'')+difH+'h) vs '+janTotalH+'h planejadas</span>';
+    bt.innerHTML='<span class="badge '+cls+'">'+(difMin>0?'&#9650;':'&#9660;')+' '+(difMin>0?'+':'-')+min2hm(Math.abs(difMin))+' vs '+min2hm(janTotalMin)+' planejadas</span>';
   }
   // Enc btn
   var nOkEq=Object.keys(eq).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
