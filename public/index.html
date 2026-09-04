@@ -242,14 +242,21 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
     <textarea class="mobs" id="obs-k" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
   </div>
   <div class="kc t">
-    <div class="kn">3 &#8212; Tempo limite 17:00</div>
+    <div class="kn">3 &#8212; Janela total (8h48 x equipes)</div>
     <div class="duo">
-      <div class="dc"><div class="dl">No horario</div><div class="dv" id="vt-ok" style="color:var(--gr);font-size:22px">---</div><div class="ds">ate 17:00</div></div>
-      <div class="dc"><div class="dl">Horas extras</div><div class="dv" id="vt-ov" style="color:var(--rd);font-size:22px">---</div><div class="ds">apos 17:00</div></div>
+      <div class="dc"><div class="dl">Planejado</div><div class="dv" id="vt-plan" style="color:rgba(192,132,252,.7);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-plan-s">N equipes x 8h48</div></div>
+      <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vt-real" style="color:var(--rd);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-real-s">soma equipes</div></div>
+    </div>
+    <div class="duo" style="margin-bottom:8px">
+      <div class="dc"><div class="dl">No horario (ate 17:00)</div><div class="dv" id="vt-ok" style="color:var(--gr);font-size:20px">---</div></div>
+      <div class="dc"><div class="dl">Apos 17:00</div><div class="dv" id="vt-ov" style="color:var(--rd);font-size:20px">---</div></div>
     </div>
     <div id="bdg-t" style="margin-bottom:8px"></div>
-    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-t"></div>
-    <textarea class="mobs" id="obs-t" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
+    <div class="motivo">
+      <div class="ml">Motivo atraso saida</div>
+      <div class="chips" id="ch-t"></div>
+      <textarea class="mobs" id="obs-t" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea>
+    </div>
   </div>
 </div>
 <div class="eq-box">
@@ -432,7 +439,7 @@ var nM=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
 var MOTS={
   p:['Falta producao','Cliente fechado','Transito','Avaria produto','Recarga parcial','Evento extra','Outros'],
   k:['Rota alternativa','Evento extra','Retorno consig.','Manutencao','Transito','Rio Preto Eva','Outros'],
-  t:['Transito pesado','Recarga camara','Cliente ausente','Avaria veiculo','Chuva intensa','Evento extra','Outros']
+  t:['Carregamento atrasado','Falta de produto','Problema no carro','Falta de equipe','Producao atrasada','Evento extra','Outros']
 };
 function fN(v,d){if(!v&&v!==0)return '---';return(+v).toLocaleString('pt-BR',{maximumFractionDigits:d||0,minimumFractionDigits:d||0});}
 function hm2min(h){if(!h)return null;var p=h.split(':');return +p[0]*60+ +p[1];}
@@ -537,24 +544,49 @@ function renderKPIs(){
   setBar('bkp','bkr','lkp','lkr',kp,kr,'#FF9A3C');setBdg('bdg-k',kp,kr,'km');
   var alEl=document.getElementById('km-alerts');
   alEl.innerHTML=alerts.map(function(a){return '<div class="alrt km">&#9888; '+a+'</div>';}).join('');
-  // TEMPO
-  var nEq=Object.keys(eq).length,nOkT=0,nOv=0,nReg=0;
+  // TEMPO — Janela total = N equipes x 8h48
+  var nEq=Object.keys(eq).length;
+  var janTotalMin=nEq*528; // 8h48 = 528 min
+  var janTotalH=Math.round(janTotalMin/60*10)/10;
+  var realTotalMin=0,nReg=0,nOkT=0,nOv=0;
   Object.keys(eq).forEach(function(mot){
-    // Retorno real = o mais tarde entre todos os retornos das cargas
+    var E=eq[mot];
+    var hIniPlan=hm2min(E.h_saida_plan||'07:00');
+    // Retorno real = mais tarde entre todos os retornos das cargas
     var hRR=null,best=null;
-    (eq[mot].cargas||[]).forEach(function(c){
+    (E.cargas||[]).forEach(function(c){
       var lc=(LC[DIA]||{})[c.id]||{};
       var ret=lc.h_ret_real||c.h_ret_real||null;
       if(ret){var t=hm2min(ret);if(!best||t>best){best=t;hRR=ret;}}
     });
-    if(hRR){nReg++;if(hm2min(hRR)<=LIMITE)nOkT++;else nOv++;}
+    if(hRR){
+      var tEqMin=hm2min(hRR)-hIniPlan;
+      realTotalMin+=tEqMin;
+      nReg++;
+      if(hm2min(hRR)<=LIMITE)nOkT++;else nOv++;
+    }
   });
+  var realH=nReg?Math.round(realTotalMin/60*10)/10:null;
+  var difMin=realH!==null?realTotalMin-janTotalMin:null;
+  var difH=difMin!==null?Math.round(difMin/60*10)/10:null;
+
+  // Exibir
+  setV('vt-plan',janTotalH,'h');
+  document.getElementById('vt-plan-s').textContent=nEq+' equipes x 8h48';
+  setV('vt-real',realH!==null?realH:'---','h');
+  document.getElementById('vt-real-s').textContent=nReg?nReg+'/'+nEq+' registradas':'lance retornos';
   document.getElementById('vt-ok').textContent=nReg?nOkT:'---';
   document.getElementById('vt-ov').textContent=nReg?nOv:'---';
+
   var bt=document.getElementById('bdg-t');
-  if(!nReg)bt.innerHTML='<span class="badge b-nd">Sem retornos lancados</span>';
-  else if(nOv===0)bt.innerHTML='<span class="badge b-ok">&#10003; Todas ate 17:00</span>';
-  else bt.innerHTML='<span class="badge b-bad">&#9888; '+nOv+' equipe(s) apos 17:00</span>';
+  if(!nReg){
+    bt.innerHTML='<span class="badge b-nd">Sem retornos lancados</span>';
+  }else{
+    var cls=difMin===null?'b-nd':difMin>0?'b-bad':difMin<-60?'b-ok':'b-warn';
+    var sinal=difMin>0?'+':'';
+    var msg=difMin!==null?(sinal+min2hm(Math.abs(difMin))+' ('+(difH>0?'+':'')+difH+'h) vs planejado'):'';
+    bt.innerHTML='<span class="badge '+cls+'">'+(difMin>0?'&#9650;':'&#9660;')+' '+msg+'</span>';
+  }
   // Enc btn
   var nOkEq=Object.keys(eq).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
   var enc=document.getElementById('enc-btn');
