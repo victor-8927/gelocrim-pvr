@@ -242,7 +242,7 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
     <textarea class="mobs" id="obs-k" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
   </div>
   <div class="kc t">
-    <div class="kn">3 &#8212; Janela total (10h x equipes)</div>
+    <div class="kn">3 &#8212; Janela total (8h48 x equipes)</div>
     <div class="duo">
       <div class="dc"><div class="dl">Planejado</div><div class="dv" id="vt-plan" style="color:rgba(192,132,252,.7);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-plan-s">N equipes x 8h48</div></div>
       <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vt-real" style="color:var(--rd);font-size:18px">---<span class="du">h</span></div><div class="ds" id="vt-real-s">soma equipes</div></div>
@@ -546,7 +546,7 @@ function renderKPIs(){
   alEl.innerHTML=alerts.map(function(a){return '<div class="alrt km">&#9888; '+a+'</div>';}).join('');
   // TEMPO — Janela total = N equipes x 10h (8h48 trabalho + 1h12 intervalo)
   var nEq=Object.keys(eq).length;
-  var janTotalMin=nEq*600; // 10h = 600 min por equipe
+  var janTotalMin=nEq*528; // 8h48 = 528 min por equipe
   var janTotalH=Math.round(janTotalMin/60*10)/10;
   var realTotalMin=0,nReg=0,nOkT=0,nOv=0;
 
@@ -577,7 +577,7 @@ function renderKPIs(){
 
   // Exibir
   setV('vt-plan',janTotalH,'h');
-  document.getElementById('vt-plan-s').textContent=nEq+' equipes x 10h (8h48+1h12)';
+  document.getElementById('vt-plan-s').textContent=nEq+' equipes x 8h48';
   setV('vt-real',realH!==null?realH:'---','h');
   document.getElementById('vt-real-s').textContent=nReg+'/'+nEq+' equipes registradas';
   document.getElementById('vt-ok').textContent=nReg?nOkT:'---';
