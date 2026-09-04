@@ -226,7 +226,7 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
     <div class="bm"><span id="lpp">plan.</span><span id="lpr" style="color:var(--gr)">real</span></div></div>
     <div id="bdg-p" style="margin-bottom:8px"></div>
     <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-p"></div>
-    <textarea class="mobs" id="obs-p" rows="2" placeholder="Observacao..." oninput="saveObs()"></textarea></div>
+    <textarea class="mobs" id="obs-p" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
   </div>
   <div class="kc k">
     <div class="kn">2 &#8212; KM percorrido</div>
@@ -239,7 +239,7 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
     <div id="bdg-k" style="margin-bottom:8px"></div>
     <div id="km-alerts"></div>
     <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-k"></div>
-    <textarea class="mobs" id="obs-k" rows="2" placeholder="Observacao..." oninput="saveObs()"></textarea></div>
+    <textarea class="mobs" id="obs-k" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
   </div>
   <div class="kc t">
     <div class="kn">3 &#8212; Tempo limite 17:00</div>
@@ -249,7 +249,7 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
     </div>
     <div id="bdg-t" style="margin-bottom:8px"></div>
     <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-t"></div>
-    <textarea class="mobs" id="obs-t" rows="2" placeholder="Observacao..." oninput="saveObs()"></textarea></div>
+    <textarea class="mobs" id="obs-t" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
   </div>
 </div>
 <div class="eq-box">
@@ -765,25 +765,8 @@ function loadLocal(){
     console.log('Local carregado OK');
   }catch(e){console.warn('loadLocal err',e);}
 }
-function saveLocal(){
-  try{
-    localStorage.setItem("pvr_LE",JSON.stringify(LE));
-    localStorage.setItem("pvr_LC",JSON.stringify(LC));
-    localStorage.setItem("pvr_LD",JSON.stringify(LD));
-    var ind=document.getElementById("save-ind");
-    if(ind){ind.textContent="Salvo ✓";ind.style.color="var(--gr)";setTimeout(function(){ind.textContent="";},2000);}
-  }catch(e){console.warn("localStorage err",e);}
-}
-function loadLocal(){
-  try{
-    var le=localStorage.getItem("pvr_LE");
-    var lc=localStorage.getItem("pvr_LC");
-    var ld=localStorage.getItem("pvr_LD");
-    if(le)LE=JSON.parse(le);
-    if(lc)LC=JSON.parse(lc);
-    if(ld)LD=JSON.parse(ld);
-  }catch(e){console.warn("loadLocal err",e);}
-}
+
+
 function togCancel(cid){
   if(!DIA)return;
   if(!LC[DIA][cid])LC[DIA][cid]={};
