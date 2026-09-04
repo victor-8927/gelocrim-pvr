@@ -723,9 +723,9 @@ function renderEquipes(){
 
         html+='<tr><td class="lbl">KM</td><td class="r plan">'+fN(c.km_plan,1)+' km</td>';
         html+='<td class="r"><div style="display:flex;gap:3px;justify-content:flex-end;align-items:center">';
-        html+='<input type="number" class="real-inp" placeholder="ini" style="width:55px" value="'+(lc.hod_ini||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)">';
+        html+='<input type="number" class="real-inp" placeholder="km saida" style="width:72px" value="'+(lc.hod_ini||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)">';
         html+='<span style="color:var(--tx3);font-size:9px">&#8594;</span>';
-        html+='<input type="number" class="real-inp" placeholder="fim" style="width:55px" value="'+(lc.hod_ret||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)">';
+        html+='<input type="number" class="real-inp" placeholder="km retorno" style="width:72px" value="'+(lc.hod_ret||'')+'" oninput="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)">';
         html+='</div></td>';
         html+='<td class="r"><span class="dif dif-'+(kmDif===null?'nd':Math.abs(kmDif)>5?'bad':'ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td><td></td></tr>';
 
