@@ -199,7 +199,6 @@ html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:
   <div style="text-align:right">
     <div class="live"><span class="dot"></span>Ao vivo</div>
     <div class="clk" id="clk"></div>
-    <div id="save-ind" style="font-size:9px;font-family:var(--mo);height:12px;text-align:right;margin-top:1px"></div>
   </div>
 </div>
 <div class="imp">
@@ -285,154 +284,774 @@ function sbFetch(method, path, body) {
 }
 
 async function sbLoadDia(dia) {
-  // Primeiro carrega do localStorage (instantaneo)
   try {
-    var le = localStorage.getItem('pvr_LE');
-    var lc = localStorage.getItem('pvr_LC');
-    var ld = localStorage.getItem('pvr_LD');
-    if(le) { var LElocal=JSON.parse(le); if(LElocal[dia]) LE[dia]=LElocal[dia]; }
-    if(lc) { var LClocal=JSON.parse(lc); if(LClocal[dia]) LC[dia]=LClocal[dia]; }
-    if(ld) { var LDlocal=JSON.parse(ld); if(LDlocal[dia]) LD[dia]=LDlocal[dia]; }
-  } catch(e) { console.warn('loadLocal err:', e); }
+    // Carregar dia
+    var r1 = await fetch(SB_URL + '/rest/v1/pvr_dias?dia=eq.' + dia, {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
+    });
+    var dias = await r1.json();
+    if (!dias.length) return null;
+    var d = dias[0];
 
-  // Tentar Supabase em background para sincronizar
-  try {
-    var r1 = await fetch(SB_URL + '/rest/v1/pvr_equipes?dia=eq.' + dia, {
+    // Carregar equipes
+    var r2 = await fetch(SB_URL + '/rest/v1/pvr_equipes?dia=eq.' + dia, {
       headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
     });
-    if(r1.ok) {
-      var equipes = await r1.json();
-      if(equipes && equipes.length) {
-        equipes.forEach(function(e) {
-          if(!LE[dia]) LE[dia] = {};
-          if(!LE[dia][e.motorista] || e.ok) {
-            LE[dia][e.motorista] = {
-              hod_ini: e.hod_ini || '',
-              hod_ret: e.hod_ret || '',
-              km_real: e.km_real,
-              h_ret_real: e.h_ret_real || '',
-              ok: e.ok || false
-            };
-          }
-        });
-      }
-    }
-    var r2 = await fetch(SB_URL + '/rest/v1/pvr_cargas?dia=eq.' + dia, {
+    var equipes = await r2.json();
+
+    // Carregar cargas
+    var r3 = await fetch(SB_URL + '/rest/v1/pvr_cargas?dia=eq.' + dia, {
       headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
     });
-    if(r2.ok) {
-      var cargas = await r2.json();
-      if(cargas && cargas.length) {
-        cargas.forEach(function(c) {
-          if(!LC[dia]) LC[dia] = {};
-          LC[dia][c.carga_id] = {
-            peso_real: c.peso_real,
-            hod_ini: c.hod_ini,
-            hod_ret: c.hod_ret,
-            h_saida_real: c.h_saida_real,
-            h_ret_real: c.h_ret_real,
-            cancelada: c.cancelada || false,
-            ok: c.ok || false
-          };
-        });
-      }
-    }
-    var r3 = await fetch(SB_URL + '/rest/v1/pvr_dias?dia=eq.' + dia, {
-      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
+    var cargas = await r3.json();
+
+    // Restaurar LE e LC do Supabase
+    equipes.forEach(function(e) {
+      if (!LE[dia]) LE[dia] = {};
+      LE[dia][e.motorista] = {
+        hod_ini:    e.hod_ini || '',
+        hod_ret:    e.hod_ret || '',
+        km_real:    e.km_real,
+        h_ret_real: e.h_ret_real || '',
+        ok:         e.ok || false
+      };
     });
-    if(r3.ok) {
-      var dias = await r3.json();
-      if(dias && dias.length) {
-        var d = dias[0];
-        if(!LD[dia]) LD[dia] = {c_p:[],c_k:[],c_t:[]};
-        if(d.locked) {
-          LD[dia].locked = true;
-          LD[dia].lock_ts = d.lock_ts || '';
-          LD[dia].obs_p = d.obs_peso || '';
-          LD[dia].obs_k = d.obs_km || '';
-          LD[dia].obs_t = d.obs_tempo || '';
-        }
-      }
+
+    cargas.forEach(function(c) {
+      if (!LC[dia]) LC[dia] = {};
+      LC[dia][c.carga_id] = {
+        peso_real: c.peso_real,
+        ok:        c.ok || false
+      };
+    });
+
+    // Restaurar LD
+    if (!LD[dia]) LD[dia] = {c_p:[],c_k:[],c_t:[]};
+    if (d.locked) {
+      LD[dia].locked   = true;
+      LD[dia].lock_ts  = d.lock_ts || '';
+      LD[dia].obs_p    = d.obs_peso || '';
+      LD[dia].obs_k    = d.obs_km  || '';
+      LD[dia].obs_t    = d.obs_tempo || '';
+      LD[dia].c_p      = d.chips_peso  || [];
+      LD[dia].c_k      = d.chips_km   || [];
+      LD[dia].c_t      = d.chips_tempo || [];
     }
+    return d;
   } catch(e) {
-    console.warn('Supabase load falhou (usando localStorage):', e.message || e);
+    console.warn('Supabase load error:', e);
+    return null;
   }
-  return true;
 }
 
 async function sbSaveDia(dia) {
-  // SEMPRE salva no localStorage primeiro (instantaneo, nunca falha)
-  try {
-    localStorage.setItem('pvr_LE', JSON.stringify(LE));
-    localStorage.setItem('pvr_LC', JSON.stringify(LC));
-    localStorage.setItem('pvr_LD', JSON.stringify(LD));
-    // Mostrar indicador de salvo
-    var ind = document.getElementById('save-ind');
-    if(ind){ind.textContent='Salvo';ind.style.color='var(--gr)';setTimeout(function(){ind.textContent='';},2000);}
-  } catch(e) { console.warn('localStorage err:', e); }
-
-  // Tentar Supabase em background (sem bloquear UI)
   try {
     var ld = LD[dia] || {};
     var d  = D[dia]  || {};
+
+    // Upsert pvr_dias
+    await sbFetch('POST', '/rest/v1/pvr_dias?on_conflict=dia', [{
+      dia:         dia,
+      mes:         d.mes || dia.substring(0,7),
+      km_plan:     d.km_plan || 0,
+      peso_plan_pv: d.peso_plan_pv || 0,
+      has_prog:    d.has_prog || false,
+      locked:      ld.locked || false,
+      lock_ts:     ld.lock_ts || null,
+      obs_peso:    ld.obs_p || '',
+      obs_km:      ld.obs_k || '',
+      obs_tempo:   ld.obs_t || '',
+      chips_peso:  ld.c_p || [],
+      chips_km:    ld.c_k || [],
+      chips_tempo: ld.c_t || [],
+      updated_at:  new Date().toISOString()
+    }]);
+
+    // Upsert pvr_equipes
     var eqs = Object.keys(d.equipes || {});
-
-    var diasPayload = [{
-      dia: dia, mes: d.mes || dia.substring(0,7),
-      km_plan: d.km_plan || 0, peso_plan_pv: d.peso_plan_pv || 0,
-      has_prog: d.has_prog || false,
-      locked: ld.locked || false, lock_ts: ld.lock_ts || null,
-      obs_peso: ld.obs_p || '', obs_km: ld.obs_k || '', obs_tempo: ld.obs_t || '',
-      chips_peso: ld.c_p || [], chips_km: ld.c_k || [], chips_tempo: ld.c_t || [],
-      updated_at: new Date().toISOString()
-    }];
-    await sbFetch('POST', '/rest/v1/pvr_dias?on_conflict=dia', diasPayload);
-
-    for(var i=0; i<eqs.length; i++) {
+    for (var i=0; i<eqs.length; i++) {
       var mot = eqs[i];
-      var E = d.equipes[mot];
-      var le = (LE[dia] || {})[mot] || {};
+      var E   = d.equipes[mot];
+      var le  = (LE[dia] || {})[mot] || {};
       await sbFetch('POST', '/rest/v1/pvr_equipes?on_conflict=dia,motorista', [{
-        dia: dia, motorista: mot,
-        vdas: E.vdas || [], equipe: E.equipe || [],
-        km_plan: E.km_plan || 0, peso_plan: E.peso_plan || 0,
-        h_saida_plan: E.h_saida_plan || '07:00',
-        hod_ini: le.hod_ini ? +le.hod_ini : null,
-        hod_ret: le.hod_ret ? +le.hod_ret : null,
-        km_real: le.km_real || null,
-        h_ret_real: le.h_ret_real || null,
-        ok: le.ok || false,
-        updated_at: new Date().toISOString()
+        dia:         dia,
+        motorista:   mot,
+        vdas:        E.vdas || [],
+        equipe:      E.equipe || [],
+        km_plan:     E.km_plan || 0,
+        peso_plan:   E.peso_plan || 0,
+        h_saida_plan: E.h_saida_plan || '07:30',
+        hod_ini:     le.hod_ini ? +le.hod_ini : null,
+        hod_ret:     le.hod_ret ? +le.hod_ret : null,
+        km_real:     le.km_real || null,
+        h_ret_real:  le.h_ret_real || null,
+        ok:          le.ok || false,
+        updated_at:  new Date().toISOString()
       }]);
     }
 
+    // Upsert pvr_cargas
     var allCargas = [];
     eqs.forEach(function(mot) {
       (d.equipes[mot].cargas || []).forEach(function(c) {
         var lc = (LC[dia] || {})[c.id] || {};
         allCargas.push({
-          dia: dia, carga_id: c.id, motorista: mot,
-          rota: c.rota || '', vda: c.vda || '',
-          km_plan: c.km_plan || 0, peso_plan: c.peso_plan || 0,
-          h_saida_plan: c.h_saida_plan || '07:00',
-          h_ret_plan: c.h_ret_plan || null,
-          h_saida_real: lc.h_saida_real || c.h_saida_real || null,
-          h_ret_real: lc.h_ret_real || c.h_ret_real || null,
-          peso_real: lc.peso_real || null,
-          hod_ini: lc.hod_ini ? +lc.hod_ini : null,
-          hod_ret: lc.hod_ret ? +lc.hod_ret : null,
-          cancelada: lc.cancelada || false,
-          ok: lc.ok || false,
-          tipo: c.tipo || '1carga',
-          updated_at: new Date().toISOString()
+          dia:         dia,
+          carga_id:    c.id,
+          motorista:   mot,
+          rota:        c.rota || '',
+          vda:         c.vda  || '',
+          km_plan:     c.km_plan || 0,
+          peso_plan:   c.peso_plan || 0,
+          h_saida_plan: c.h_saida_plan || '07:30',
+          h_ret_plan:  c.h_ret_plan || null,
+          h_saida_real: c.h_saida_real || null,
+          h_ret_real:  c.h_ret_real || null,
+          peso_real:   lc.peso_real || null,
+          ok:          lc.ok || false,
+          tipo:        c.tipo || '1carga',
+          updated_at:  new Date().toISOString()
         });
       });
     });
-    if(allCargas.length) {
+    if (allCargas.length) {
       await sbFetch('POST', '/rest/v1/pvr_cargas?on_conflict=dia,carga_id', allCargas);
     }
+
+    console.log('Supabase save OK:', dia);
   } catch(e) {
-    console.warn('Supabase save falhou (dados no localStorage):', e.message || e);
+    console.warn('Supabase save error:', e);
   }
 }
->
+
+var D=JSON.parse(document.getElementById('jd').textContent);
+var DIA=null,MES=null,LIMITE=1020;
+var LE={"2026-09-01":{"JAVIER":{"h_ret_real":"17:48","km_real":73,"hod_ini":"","hod_ret":"","ok":true},"ALEX":{"h_ret_real":"19:20","km_real":102,"hod_ini":"","hod_ret":"","ok":true},"ROLDAO":{"h_ret_real":"15:54","km_real":57,"hod_ini":"","hod_ret":"","ok":true},"MAICON":{"h_ret_real":"19:10","km_real":144,"hod_ini":"","hod_ret":"","ok":true},"MIRIAN":{"h_ret_real":"18:01","km_real":93,"hod_ini":"","hod_ret":"","ok":true},"HOMERO":{"h_ret_real":"16:58","km_real":56,"hod_ini":"","hod_ret":"","ok":true}},"2026-09-02":{"ALEX":{"h_ret_real":"19:08","ok":false},"JAVIER":{"h_ret_real":"13:33","ok":false},"MAICON":{"h_ret_real":"15:06","ok":false},"MIRIAN":{"h_ret_real":"15:45","ok":false}}},LC={"2026-09-01":{"28718":{"peso_real":5128,"ok":true},"28713":{"peso_real":5858,"ok":true},"28717":{"peso_real":5977,"ok":true},"28710":{"peso_real":15290,"ok":true},"28720":{"peso_real":4676,"ok":true},"28712":{"peso_real":14423,"ok":true},"28716":{"peso_real":8867,"ok":true},"28714":{"peso_real":7386,"ok":true},"28721":{"peso_real":1940,"ok":true},"28722":{"peso_real":8348,"ok":true},"28723":{"peso_real":40500,"ok":true}}},LD={"2026-09-01":{"locked":true,"lock_ts":"22:29 de 01/09/2026","c_p":[],"c_k":[],"c_t":[],"obs_p":"","obs_k":"","obs_t":""}};
+var nD=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+var nM=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+var MOTS={
+  p:['Falta producao','Cliente fechado','Transito','Avaria produto','Recarga parcial','Evento extra','Outros'],
+  k:['Rota alternativa','Evento extra','Retorno consig.','Manutencao','Transito','Rio Preto Eva','Outros'],
+  t:['Transito pesado','Recarga camara','Cliente ausente','Avaria veiculo','Chuva intensa','Evento extra','Outros']
+};
+function fN(v,d){if(!v&&v!==0)return '---';return(+v).toLocaleString('pt-BR',{maximumFractionDigits:d||0,minimumFractionDigits:d||0});}
+function hm2min(h){if(!h)return null;var p=h.split(':');return +p[0]*60+ +p[1];}
+function min2hm(m){var mm=Math.round(m);return String(Math.floor(mm/60)).padStart(2,'0')+':'+String(mm%60).padStart(2,'0');}
+function tick(){var e=document.getElementById('clk');if(e)e.textContent=new Date().toLocaleDateString('pt-BR')+' - '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+tick();setInterval(tick,1000);
+
+function getMeses(){var ms={};Object.keys(D).forEach(function(d){ms[d.substring(0,7)]=true;});return Object.keys(ms).sort();}
+
+function buildMesTabs(){
+  var el=document.getElementById('mes-tabs');el.innerHTML='';
+  getMeses().forEach(function(m){
+    var pts=m.split('-');
+    var btn=document.createElement('div');
+    btn.className='mes-tab'+(m===MES?' active':'');
+    btn.textContent=nM[+pts[1]-1].toUpperCase()+' '+pts[0];
+    btn.addEventListener('click',function(){selMes(m);});
+    el.appendChild(btn);
+  });
+}
+
+function selMes(m){
+  MES=m;buildMesTabs();buildDiaNav();
+  var dias=Object.keys(D).filter(function(d){return d.startsWith(m);}).sort();
+  if(dias.length)selDia(dias[dias.length-1]);
+}
+
+function buildDiaNav(){
+  var el=document.getElementById('dia-nav');el.innerHTML='';if(!MES)return;
+  Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort().forEach(function(dia){
+    var pts=dia.split('-');
+    var dt=new Date(+pts[0],+pts[1]-1,+pts[2]);
+    var ld=LD[dia]||{};
+    var btn=document.createElement('div');
+    btn.className='dia-btn'+(dia===DIA?' active':'')+(ld.locked?' locked':'');
+    btn.innerHTML='<div class="dia-dd">'+pts[2]+'</div>'
+      +'<div class="dia-dm">'+nM[dt.getMonth()]+'</div>'
+      +'<div class="dia-ds">'+nD[dt.getDay()]+'</div>'
+      +(ld.locked?'<div class="dia-lk">&#128274;</div>':'');
+    btn.addEventListener('click',function(){selDia(dia);});
+    el.appendChild(btn);
+  });
+}
+
+function selDia(dia){
+  DIA=dia;
+  if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};
+  // Carregar do Supabase de forma assíncrona
+  sbLoadDia(dia).then(function() {
+    buildDiaNav();
+  var ld=LD[dia];
+  var lb=document.getElementById('lock-bar');
+  if(ld.locked){lb.classList.add('on');document.getElementById('lock-info').textContent='Trancado em '+(ld.lock_ts||'');}
+  else lb.classList.remove('on');
+  document.getElementById('obs-p').value=ld.obs_p||'';
+  document.getElementById('obs-k').value=ld.obs_k||'';
+  document.getElementById('obs-t').value=ld.obs_t||'';
+  buildChips('p');buildChips('k');buildChips('t');
+  renderKPIs();renderEquipes();
+  }).catch(function(e){ console.warn('sbLoad err',e); buildDiaNav(); renderKPIs(); renderEquipes(); });
+}
+
+function renderKPIs(){
+  if(!DIA)return;
+  var d=D[DIA]||{},eq=d.equipes||{};
+  // PESO
+  var pp=d.peso_plan_pv||0,pr=0,nOk=0,tot=0,pesoCan=0,nCan=0;
+  Object.values(eq).forEach(function(E){
+    E.cargas.forEach(function(c){
+      tot++;
+      var lc=LC[DIA][c.id]||{};
+      if(lc.cancelada){pesoCan+=c.peso_plan;nCan++;return;}
+      if(lc.ok){pr+=(lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan);nOk++;}
+    });
+  });
+  setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
+  var txtP=nOk+'/'+tot+' conf.';
+  if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
+  document.getElementById('vpr-s').textContent=txtP;
+  setBar('bpp','bpr','lpp','lpr',pp,pr,'#4DFFC3');setBdg('bdg-p',pp,pr,'kg');
+  // KM
+  var kp=d.km_plan||0,kr=0,nKM=0,alerts=[];
+  // KM calculado por carga (hodômetro por viagem)
+  Object.keys(eq).forEach(function(mot){
+    var kmMot=0,hasKM=false;
+    (eq[mot].cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini){
+        kmMot+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+        hasKM=true;
+      }
+    });
+    if(hasKM){
+      kr+=kmMot;nKM++;
+      var dif=Math.round((kmMot-eq[mot].km_plan)*10)/10;
+      if(Math.abs(dif)>5)alerts.push(mot+': plan '+fN(eq[mot].km_plan,1)+' vs real '+fN(kmMot,1)+' km ('+(dif>0?'+':'')+fN(dif,1)+' km)');
+    }
+  });
+  kr=Math.round(kr*10)/10;
+  setV('vkp',fN(kp,1),'km');setV('vkr',kr?fN(kr,1):'---','km');
+  document.getElementById('vkr-s').textContent=kr?nKM+' equipes':'lance hodometros';
+  setBar('bkp','bkr','lkp','lkr',kp,kr,'#FF9A3C');setBdg('bdg-k',kp,kr,'km');
+  var alEl=document.getElementById('km-alerts');
+  alEl.innerHTML=alerts.map(function(a){return '<div class="alrt km">&#9888; '+a+'</div>';}).join('');
+  // TEMPO
+  var nEq=Object.keys(eq).length,nOkT=0,nOv=0,nReg=0;
+  Object.keys(eq).forEach(function(mot){
+    // Retorno real = o mais tarde entre todos os retornos das cargas
+    var hRR=null,best=null;
+    (eq[mot].cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      var ret=lc.h_ret_real||c.h_ret_real||null;
+      if(ret){var t=hm2min(ret);if(!best||t>best){best=t;hRR=ret;}}
+    });
+    if(hRR){nReg++;if(hm2min(hRR)<=LIMITE)nOkT++;else nOv++;}
+  });
+  document.getElementById('vt-ok').textContent=nReg?nOkT:'---';
+  document.getElementById('vt-ov').textContent=nReg?nOv:'---';
+  var bt=document.getElementById('bdg-t');
+  if(!nReg)bt.innerHTML='<span class="badge b-nd">Sem retornos lancados</span>';
+  else if(nOv===0)bt.innerHTML='<span class="badge b-ok">&#10003; Todas ate 17:00</span>';
+  else bt.innerHTML='<span class="badge b-bad">&#9888; '+nOv+' equipe(s) apos 17:00</span>';
+  // Enc btn
+  var nOkEq=Object.keys(eq).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
+  var enc=document.getElementById('enc-btn');
+  enc.disabled=(LD[DIA]||{}).locked;
+  enc.innerHTML=(LD[DIA]||{}).locked?'&#128274; Encerrado':'&#128274; Encerrar ('+nOkEq+'/'+nEq+' OK)';
+}
+
+function setV(id,val,unit){var el=document.getElementById(id);if(el)el.innerHTML=val+'<span class="du">'+unit+'</span>';}
+function setBar(bpId,brId,lpId,lrId,vP,vR,colR){
+  var mx=Math.max(vP,vR,1);
+  var bp=document.getElementById(bpId),br=document.getElementById(brId),lp=document.getElementById(lpId),lr=document.getElementById(lrId);
+  if(bp)bp.style.width=(vP?vP/mx*100:0)+'%';
+  if(br){br.style.width=(vR?vR/mx*100:0)+'%';br.style.background=colR;}
+  if(lp)lp.textContent=fN(vP,vP%1?1:0);if(lr)lr.textContent=vR?fN(vR,vR%1?1:0):'---';
+}
+function setBdg(elId,plan,real,unit){
+  var el=document.getElementById(elId);if(!el)return;
+  if(!real){el.innerHTML='<span class="badge b-nd">Sem lancamento</span>';return;}
+  if(!plan){el.innerHTML='<span class="badge b-nd">Sem planejado</span>';return;}
+  var pct=Math.round(real/plan*100),dif=real-plan;
+  var ok=(pct>=88&&pct<=115),med=Math.abs(pct-100)<=25;
+  var cls=ok?'b-ok':med?'b-warn':'b-bad';
+  el.innerHTML='<span class="badge '+cls+'">'+(dif>=0?'&#9650;':'&#9660;')+' '+(dif>=0?'+':'')+fN(dif,dif%1?1:0)+' '+unit+' / '+(pct-100>=0?'+':'')+(pct-100)+'%</span>';
+}
+function buildChips(t){
+  var el=document.getElementById('ch-'+t);if(!el)return;
+  var sel=(LD[DIA]||{})['c_'+t]||[];
+  el.innerHTML=MOTS[t].map(function(x){return '<div class="chip'+(sel.indexOf(x)>=0?' on':'')+'" onclick="togC(\''+t+'\',\''+x+'\')">'+x+'</div>';}).join('');
+}
+function togC(t,x){if(!DIA)return;if(!LD[DIA])LD[DIA]={c_p:[],c_k:[],c_t:[]};var k='c_'+t,i=LD[DIA][k].indexOf(x);if(i>=0)LD[DIA][k].splice(i,1);else LD[DIA][k].push(x);buildChips(t);}
+function saveObs(){if(!DIA||!LD[DIA])return;LD[DIA].obs_p=document.getElementById('obs-p').value;LD[DIA].obs_k=document.getElementById('obs-k').value;LD[DIA].obs_t=document.getElementById('obs-t').value;}
+
+function renderEquipes(){
+  var el=document.getElementById('eq-cards');
+  if(!DIA||!D[DIA]){el.innerHTML='<div class="nodata">Selecione um dia acima</div>';return;}
+  var eqs=D[DIA].equipes||{};
+  var nEq=Object.keys(eqs).length;
+  var nOk=Object.keys(eqs).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
+  document.getElementById('eq-title').textContent=DIA.split('-').reverse().join('/')+' - '+nEq+' equipes';
+  document.getElementById('eq-prog').innerHTML='<b>'+nOk+'</b>/'+nEq+' OK';
+  var html='';
+
+  Object.keys(eqs).sort().forEach(function(mot){
+    var E=eqs[mot],le=LE[DIA][mot]||{},isOk=le.ok||false;
+
+    // Pre-calcular sumario
+    var kmTotalC=0,pesoTotalC=0,nCOk=0,pesoCancelado=0,nCancelada=0;
+    var hSaida1aReal=null,hRetUltReal=null,hRetUltPlan=null;
+    (E.cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      if(lc.cancelada){pesoCancelado+=c.peso_plan;nCancelada++;return;}
+      var kmR=null;
+      if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)
+        kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+      if(kmR)kmTotalC+=kmR;
+      if(lc.ok)pesoTotalC+=+(lc.peso_real||c.peso_plan);
+      if(lc.ok)nCOk++;
+      var hSR=lc.h_saida_real||c.h_saida_real||null;
+      var hRR=lc.h_ret_real||c.h_ret_real||null;
+      if(hSR&&(!hSaida1aReal||hSR<hSaida1aReal))hSaida1aReal=hSR;
+      if(hRR&&(!hRetUltReal||hRR>hRetUltReal))hRetUltReal=hRR;
+      if(c.h_ret_plan&&(!hRetUltPlan||c.h_ret_plan>hRetUltPlan))hRetUltPlan=c.h_ret_plan;
+    });
+
+    var hIniPlan=E.h_saida_plan||'07:00';
+    var tPlanMin=hRetUltPlan?hm2min(hRetUltPlan)-hm2min(hIniPlan):null;
+    var tRealMin=hRetUltReal?hm2min(hRetUltReal)-hm2min(hIniPlan):null;
+    var extrasMin=hRetUltReal?Math.max(0,hm2min(hRetUltReal)-LIMITE):null;
+    var folgaMin=hRetUltReal?Math.max(0,LIMITE-hm2min(hRetUltReal)):null;
+    var atSaidaMin=hSaida1aReal?hm2min(hSaida1aReal)-hm2min(hIniPlan):null;
+    var atRetMin=hRetUltReal&&hRetUltPlan?hm2min(hRetUltReal)-hm2min(hRetUltPlan):null;
+    var kmDifEq=kmTotalC?Math.round((kmTotalC-(E.km_plan||0))*10)/10:null;
+    var isOver=hRetUltReal&&hm2min(hRetUltReal)>LIMITE;
+
+    // Card equipe
+    html+='<div class="eq-card'+(isOk?' ok':'')+(isOver?' over':'')+(kmDifEq&&Math.abs(kmDifEq)>5&&!isOk?' km-alert':'')+'">';
+
+    // Topo
+    html+='<div class="eq-top">';
+    html+='<div><div class="eq-nome">'+mot+'</div>';
+    html+='<div class="eq-sub">VDA: '+(E.vdas||[]).join(', ')+' | '+(E.equipe||[]).join(' / ')+'</div></div>';
+    html+='<div class="eq-ret"><div class="eq-ret-lbl">Retorno vs 17:00</div>';
+    html+='<div class="eq-ret-val '+(hRetUltReal?(isOver?'over':'ok'):'nd')+'">'+(hRetUltReal||'---')+(isOver?' (+'+min2hm(extrasMin)+')':hRetUltReal?' \u2713':'')+'</div></div>';
+    html+='</div>';
+
+    // Sumario 5 colunas
+    html+='<div class="eq-sumario">';
+    html+='<div class="eq-sum-item"><div class="eq-sum-l">Saida plan./real</div>';
+    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+hIniPlan+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(hSaida1aReal?(atSaidaMin>15?'var(--am)':'var(--gr)'):'var(--tx3)')+'">'+( hSaida1aReal||'---')+'</div>';
+    html+='<div class="eq-sum-d dif-'+(atSaidaMin===null?'nd':atSaidaMin>30?'bad':atSaidaMin>0?'warn':'ok')+'">'+(atSaidaMin!==null?(atSaidaMin>0?'+':'')+min2hm(Math.abs(atSaidaMin)):'--')+'</div></div>';
+
+    html+='<div class="eq-sum-item"><div class="eq-sum-l">Retorno plan./real</div>';
+    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+( hRetUltPlan||'---')+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(hRetUltReal?(isOver?'var(--rd)':'var(--gr)'):'var(--tx3)')+'">'+( hRetUltReal||'---')+'</div>';
+    html+='<div class="eq-sum-d dif-'+(atRetMin===null?'nd':atRetMin>60?'bad':atRetMin>0?'warn':'ok')+'">'+(atRetMin!==null?(atRetMin>0?'+':'')+min2hm(Math.abs(atRetMin)):'--')+'</div></div>';
+
+    html+='<div class="eq-sum-item"><div class="eq-sum-l">Tempo plan./real</div>';
+    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+( tPlanMin?min2hm(tPlanMin):'---')+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(tRealMin?(isOver?'var(--rd)':'var(--gr)'):'var(--tx3)')+'">'+( tRealMin?min2hm(tRealMin):'---')+'</div>';
+    html+='<div class="eq-sum-d '+(extrasMin&&extrasMin>0?'dif-bad':'dif-ok')+'">'+(extrasMin&&extrasMin>0?'+'+min2hm(extrasMin)+' extra':(folgaMin&&folgaMin>0?min2hm(folgaMin)+' folga':'--'))+'</div></div>';
+
+    html+='<div class="eq-sum-item"><div class="eq-sum-l">KM plan./real</div>';
+    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+fN(E.km_plan,1)+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(kmTotalC?Math.abs(kmDifEq||0)>5?'var(--am)':'var(--gr)':'var(--tx3)')+'">'+( kmTotalC?fN(kmTotalC,1):'---')+'</div>';
+    html+='<div class="eq-sum-d dif-'+(kmDifEq===null?'nd':Math.abs(kmDifEq)>5?'bad':'ok')+'">'+(kmDifEq!==null?(kmDifEq>0?'+':'')+fN(kmDifEq,1)+' km':'--')+'</div></div>';
+
+    html+='<div class="eq-sum-item"><div class="eq-sum-l">Peso plan./conf.</div>';
+    html+='<div class="eq-sum-v" style="color:var(--tx2)">'+fN(E.peso_plan)+'</div>';
+    html+='<div class="eq-sum-v" style="color:'+(pesoTotalC?'var(--gr)':'var(--tx3)')+'">'+( pesoTotalC?fN(pesoTotalC):'---')+'</div>';
+    html+='<div class="eq-sum-d">'+(nCancelada?'<span style="color:var(--rd)">-'+fN(pesoCancelado)+' canc.</span> ':'')+nCOk+'/'+(E.cargas||[]).length+' OK</div></div>';
+    html+='</div>';
+
+    // Cargas
+    html+='<div><div class="c-lbl" style="margin-bottom:6px">Planejado vs Realizado por viagem</div>';
+    (E.cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      var isCan=lc.cancelada||false;
+      var isRec=c.tipo==='recarga';
+      var hasFR=!!c.h_ret_real;
+
+      html+='<div class="c-block'+(isCan?' cancelada':lc.ok?' ok':'')+(isRec?' rec':'')+'">';
+      html+='<div class="c-block-top"><div class="c-block-title">';
+      html+='<span class="c-block-rota">'+c.rota+'</span>';
+      html+='<span class="c-block-id">'+c.id+'</span>';
+      html+='<span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'Recarga':'1a Carga')+'</span>';
+      html+='<span style="font-size:8px;color:var(--tx3)">VDA '+c.vda+(hasFR?' <span class="ftag f">F</span>':' <span class="ftag m">M</span>')+'</span>';
+      html+='</div><div style="display:flex;align-items:center;gap:5px">';
+      if(isCan)html+='<span class="cancel-badge">CANCELADA</span>';
+      html+='<button class="'+(isCan?'btn-uncancel':'btn-cancel')+'" onclick="togCancel(\''+c.id+'\')">'+(isCan?'Reativar':'Cancelar')+'</button>';
+      html+='</div></div>';
+
+      if(isCan){
+        html+='<div style="text-align:center;padding:8px;color:var(--rd);font-size:10px;font-weight:600">Cancelada — '+fN(c.peso_plan)+' kg retirados do total</div>';
+      }else{
+        var kmR=null;
+        if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)
+          kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+        var kmDif=kmR!==null?Math.round((kmR-c.km_plan)*10)/10:null;
+        var hSP=c.h_saida_plan,hRP=c.h_ret_plan;
+        var hSR=lc.h_saida_real||c.h_saida_real||null;
+        var hRR=lc.h_ret_real||c.h_ret_real||null;
+        var tPlanM=hSP&&hRP?hm2min(hRP)-hm2min(hSP):null;
+        var tRealM=hSR&&hRR?hm2min(hRR)-hm2min(hSR):null;
+        var atSM=hSR?hm2min(hSR)-hm2min(hSP):null;
+        var atRM=hRR&&hRP?hm2min(hRR)-hm2min(hRP):null;
+        var tDif=tRealM!==null&&tPlanM!==null?tRealM-tPlanM:null;
+        var pesoR=lc.peso_real?+lc.peso_real:null;
+        var pesoDif=pesoR!==null?Math.round(pesoR-c.peso_plan):null;
+
+        html+='<table class="pvr-table"><thead><tr>';
+        html+='<th>Indicador</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferenca</th><th></th>';
+        html+='</tr></thead><tbody>';
+
+        html+='<tr><td class="lbl">Saida</td><td class="r plan">'+hSP+'</td>';
+        html+='<td class="r"><input type="time" class="real-inp'+(hSR?' f':'')+'" value="'+(lc.h_saida_real||hSR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_saida_real\',this.value)"></td>';
+        html+='<td class="r"><span class="dif dif-'+(atSM===null?'nd':atSM>30?'bad':atSM>0?'warn':'ok')+'">'+(atSM!==null?(atSM>0?'+':'')+min2hm(Math.abs(atSM)):'---')+'</span></td><td></td></tr>';
+
+        html+='<tr><td class="lbl">Retorno</td><td class="r plan">'+( hRP||'---')+'</td>';
+        html+='<td class="r"><input type="time" class="real-inp'+(hRR?' f':'')+'" value="'+(lc.h_ret_real||hRR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_ret_real\',this.value)"></td>';
+        html+='<td class="r"><span class="dif dif-'+(atRM===null?'nd':atRM>30?'bad':atRM>0?'warn':'ok')+'">'+(atRM!==null?(atRM>0?'+':'')+min2hm(Math.abs(atRM)):'---')+'</span></td><td></td></tr>';
+
+        html+='<tr><td class="lbl">Tempo exec.</td><td class="r plan">'+( tPlanM!==null?min2hm(tPlanM):'---')+'</td>';
+        html+='<td class="r" style="color:'+(tRealM!==null?'var(--tx)':'var(--tx3)')+'">'+( tRealM!==null?min2hm(tRealM):'---')+'</td>';
+        html+='<td class="r"><span class="dif dif-'+(tDif===null?'nd':tDif>30?'bad':tDif>0?'warn':'ok')+'">'+(tDif!==null?(tDif>0?'+':'')+min2hm(Math.abs(tDif)):'---')+'</span></td><td></td></tr>';
+
+        html+='<tr><td class="lbl">KM</td><td class="r plan">'+fN(c.km_plan,1)+' km</td>';
+        html+='<td class="r"><div style="display:flex;gap:3px;justify-content:flex-end;align-items:center">';
+        html+='<input type="number" class="real-inp" placeholder="km saida" style="width:72px" value="'+(lc.hod_ini||'')+'" onchange="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)">';
+        html+='<span style="color:var(--tx3);font-size:9px">&#8594;</span>';
+        html+='<input type="number" class="real-inp" placeholder="km retorno" style="width:72px" value="'+(lc.hod_ret||'')+'" onchange="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)">';
+        html+='</div></td>';
+        html+='<td class="r"><span class="dif dif-'+(kmDif===null?'nd':Math.abs(kmDif)>5?'bad':'ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td><td></td></tr>';
+
+        html+='<tr><td class="lbl">Peso</td><td class="r plan">'+fN(c.peso_plan)+' kg</td>';
+        html+='<td class="r"><input type="number" class="real-inp" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" onchange="setPeso(\''+c.id+'\',this.value)"></td>';
+        html+='<td class="r"><span class="dif dif-'+(pesoDif===null?'nd':Math.abs(pesoDif)>500?'warn':'ok')+'">'+(pesoDif!==null?(pesoDif>0?'+':'')+fN(pesoDif)+' kg':'---')+'</span></td>';
+        html+='<td><button class="bok '+(lc.ok?'done':'idle')+'" style="font-size:8px;padding:4px 8px" onclick="togCOk(\''+c.id+'\')">'+(lc.ok?'OK':'OK')+'</button></td></tr>';
+
+        html+='</tbody></table>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+
+    html+='<div class="eq-footer"><button class="btn-eq '+(isOk?'done':'idle')+'" onclick="togEq(\''+mot+'\')">'+(isOk?'Equipe OK':'Confirmar equipe')+'</button></div>';
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+
+
+function saveLocal(){
+  try{
+    localStorage.setItem('pvr_LE',JSON.stringify(LE));
+    localStorage.setItem('pvr_LC',JSON.stringify(LC));
+    localStorage.setItem('pvr_LD',JSON.stringify(LD));
+  }catch(e){console.warn('localStorage err',e);}
+}
+function loadLocal(){
+  try{
+    var le=localStorage.getItem('pvr_LE');
+    var lc=localStorage.getItem('pvr_LC');
+    var ld=localStorage.getItem('pvr_LD');
+    if(le)LE=JSON.parse(le);
+    if(lc)LC=JSON.parse(lc);
+    if(ld)LD=JSON.parse(ld);
+    console.log('Local carregado OK');
+  }catch(e){console.warn('loadLocal err',e);}
+}
+function saveLocal(){
+  try{
+    localStorage.setItem("pvr_LE",JSON.stringify(LE));
+    localStorage.setItem("pvr_LC",JSON.stringify(LC));
+    localStorage.setItem("pvr_LD",JSON.stringify(LD));
+    var ind=document.getElementById("save-ind");
+    if(ind){ind.textContent="Salvo ✓";ind.style.color="var(--gr)";setTimeout(function(){ind.textContent="";},2000);}
+  }catch(e){console.warn("localStorage err",e);}
+}
+function loadLocal(){
+  try{
+    var le=localStorage.getItem("pvr_LE");
+    var lc=localStorage.getItem("pvr_LC");
+    var ld=localStorage.getItem("pvr_LD");
+    if(le)LE=JSON.parse(le);
+    if(lc)LC=JSON.parse(lc);
+    if(ld)LD=JSON.parse(ld);
+  }catch(e){console.warn("loadLocal err",e);}
+}
+function togCancel(cid){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  LC[DIA][cid].cancelada=!LC[DIA][cid].cancelada;
+  if(LC[DIA][cid].cancelada)LC[DIA][cid].ok=false;
+  renderEquipes();renderKPIs();sbSaveDia(DIA);
+}
+function setCargaHod(cid,campo,v){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  LC[DIA][cid][campo]=v;
+  renderKPIs();renderEquipes();
+  if(campo==='hod_ret'){sbSaveDia(DIA);saveLocal();}
+}
+function setCargaRet(cid,campo,v){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  LC[DIA][cid][campo]=v;
+  renderKPIs();renderEquipes();
+  sbSaveDia(DIA);
+}
+function setHod(mot,campo,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot][campo]=v;renderKPIs();renderEquipes();if(campo==='hod_ret')sbSaveDia(DIA);}
+function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();sbSaveDia(DIA);saveLocal();}
+function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();}
+function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();sbSaveDia(DIA);saveLocal();}
+function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');sbSaveDia(DIA);saveLocal();buildDiaNav();selDia(DIA);}
+function exportar(){var blob=new Blob([JSON.stringify({D:D,LE:LE,LC:LC,LD:LD,ts:new Date().toISOString()})],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gelocrim_pvr_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();}
+
+function importFusion(file){
+  if(!file)return;
+  var st=document.getElementById('st-f');
+  st.textContent='Lendo...';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'binary',cellDates:false});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+      var novos=0,erros=[];
+
+      function parsePeso(v){
+        if(!v&&v!==0) return 0;
+        var s=String(v).replace(/\./g,'').replace(',','.');
+        return parseFloat(s)||0;
+      }
+      function parseKM(v){
+        if(!v&&v!==0) return 0;
+        // Fusion exporta KM já em km (ex: 33.692 = 33.7 km)
+        if(typeof v==='number') return Math.round(v*10)/10;
+        return Math.round(parseFloat(String(v).replace(',','.'))*10)/10;
+      }
+      function parseDT(v){
+        if(!v) return null;
+        var s=String(v).trim();
+        if(!s||s==='null'||s==='None') return null;
+        // formato dd/mm/yyyy HH:MM:SS
+        var m1=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+        if(m1) return new Date(+m1[3],+m1[2]-1,+m1[1],+m1[4],+m1[5]);
+        // formato yyyy-mm-dd HH:MM:SS
+        var m2=s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        if(m2) return new Date(+m2[1],+m2[2]-1,+m2[3],+m2[4],+m2[5]);
+        // Excel serial
+        if(typeof v==='number') return new Date(Math.round((v-25569)*86400000));
+        return null;
+      }
+      function pz(n){return String(n).padStart(2,'0');}
+      function fmt(dt){
+        if(!dt||isNaN(dt.getTime())) return null;
+        return pz(dt.getHours())+':'+pz(dt.getMinutes());
+      }
+      function fmtDia(dt){
+        if(!dt||isNaN(dt.getTime())) return null;
+        return dt.getFullYear()+'-'+pz(dt.getMonth()+1)+'-'+pz(dt.getDate());
+      }
+
+      for(var i=2;i<rows.length;i++){
+        var row=rows[i];
+        var cargaId=String(row[0]||'').trim();
+        // Ignorar linha vazia ou linha TOTAL
+        if(!cargaId||cargaId.toUpperCase()==='TOTAL'||cargaId==='') continue;
+        // Ignorar se não é número
+        if(isNaN(+cargaId)){erros.push('linha '+(i+1)+': ID inválido: '+cargaId);continue;}
+
+        var dtPlan = parseDT(row[11]);
+        if(!dtPlan){erros.push('carga '+cargaId+': data inválida');continue;}
+
+        var dia    = fmtDia(dtPlan);
+        var mot    = String(row[9]||'').trim().split(' ')[0];
+        var vda    = String(row[10]||'').trim().replace(/\s/g,'');
+        var rota   = String(row[6]||'').trim();
+        var peso   = parsePeso(row[3]);
+        var km     = parseKM(row[7]);
+        var dtSaiR = parseDT(row[12]);
+        var dtFim  = parseDT(row[13]);
+        var hSP    = fmt(dtPlan);
+        var hRP    = fmt(dtFim);
+        var hSR    = fmt(dtSaiR);
+        var hRR    = (dtSaiR&&dtFim&&dtFim>dtSaiR)?fmt(dtFim):null;
+
+        var equipe=[mot];
+        for(var ci=16;ci<=19;ci++){
+          var aj=String(row[ci]||'').trim().split(' ')[0];
+          if(aj&&aj!=='None'&&aj!==''&&equipe.indexOf(aj)<0) equipe.push(aj);
+        }
+
+        // Tipo: recarga se saída planejada >= 10:00
+        var tipo=(hSP&&hSP>='10:00')?'recarga':'1carga';
+
+        // Ao importar um novo Fusion, resetar o dia para evitar duplicação
+        if(!D[dia]||!D[dia]._importado){
+          D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:(D[dia]&&D[dia].peso_plan_pv)||0,has_prog:(D[dia]&&D[dia].has_prog)||false,equipes:{},_importado:true};
+        }
+        if(!D[dia].equipes[mot]) D[dia].equipes[mot]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP};
+
+        var E=D[dia].equipes[mot];
+        if(!E.h_saida_plan||hSP<E.h_saida_plan) E.h_saida_plan=hSP;
+        if(E.vdas.indexOf(vda)<0) E.vdas.push(vda);
+        E.km_plan   =Math.round((E.km_plan+km)*10)/10;
+        E.peso_plan =Math.round((E.peso_plan+peso)*10)/10;
+        D[dia].km_plan=Math.round((D[dia].km_plan+km)*10)/10;
+
+        // Se Fusion tem retorno real, preencher LE
+        if(hRR){
+          if(!LE[dia]) LE[dia]={};
+          if(!LE[dia][mot]) LE[dia][mot]={};
+          var retAtual=LE[dia][mot].h_ret_real||'00:00';
+          if(hRR>retAtual) LE[dia][mot].h_ret_real=hRR;
+        }
+
+        E.cargas.push({
+          id:cargaId,rota:rota,vda:vda,
+          km_plan:km,peso_plan:Math.round(peso*10)/10,
+          h_saida_plan:hSP,h_ret_plan:hRP,
+          h_saida_real:hSR,h_ret_real:hRR,
+          tipo:tipo
+        });
+        novos++;
+      }
+
+      // Ordenar cargas por h_saida_plan
+      Object.keys(D).forEach(function(dia){
+        Object.values(D[dia].equipes||{}).forEach(function(E){
+          E.cargas.sort(function(a,b){return(a.h_saida_plan||'').localeCompare(b.h_saida_plan||'');});
+        });
+      });
+
+      // Feedback
+      var msg=novos+' cargas importadas';
+      if(erros.length) msg+=' ('+erros.length+' ignoradas)';
+      document.getElementById('dz-f').classList.add('ok');
+      st.textContent=msg;
+      console.log('importFusion erros:',erros);
+
+      // Navegar para o último dia importado
+      var allDias=Object.keys(D).sort();
+      var ultimoDia=allDias[allDias.length-1];
+      MES=ultimoDia.substring(0,7);
+      buildMesTabs();buildDiaNav();selDia(ultimoDia);
+
+    }catch(err){
+      st.textContent='Erro: '+err.message;
+      console.error('importFusion:',err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function importEnc(file){
+  if(!file)return;
+  var st=document.getElementById('st-e');
+  st.textContent='Lendo...';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'binary'});
+      var totalPV=0,totalRec=0,totalBon=0,totalCon=0;
+      var diaEnc=null;
+
+      wb.SheetNames.forEach(function(aba){
+        // Detectar data da aba: "01.09.2026" → "2026-09-01"
+        var m=aba.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if(m) diaEnc=m[3]+'-'+m[2]+'-'+m[1];
+
+        var rows=XLSX.utils.sheet_to_json(wb.Sheets[aba],{header:1,defval:'',raw:true});
+
+        // Encontrar linha de cabeçalho (tem 'ROTA' na col 0)
+        var hdrIdx=-1;
+        for(var i=0;i<rows.length;i++){
+          if(String(rows[i][0]).trim().toUpperCase()==='ROTA'){hdrIdx=i;break;}
+        }
+        if(hdrIdx<0) return;
+
+        function qty(v){
+          try{
+            var n=parseFloat(String(v).replace(',','.'));
+            return isNaN(n)?0:Math.round(n);
+          }catch(ex){return 0;}
+        }
+
+        for(var i=hdrIdx+1;i<rows.length;i++){
+          var row=rows[i];
+          var tipo=String(row[9]||'').trim().toUpperCase();
+
+          var q3  =qty(row[10]); // 377 3kg
+          var q5  =qty(row[11]); // 370 5kg
+          var q10 =qty(row[12]); // 371 10kg
+          var q20 =qty(row[13]); // 372 20kg
+          var q40 =qty(row[14]); // 373 40kg
+          var q50 =qty(row[15]); // 374 50kg
+
+          var peso=q3*3+q5*6+q10*11+q20*23+q40*45+q50*55;
+          if(!peso) continue;
+
+          // Classificar por tipo mas somar TUDO no total
+          if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0||tipo.indexOf('PREVENDA')>=0)
+            totalPV+=peso;
+          else if(tipo.indexOf('TROCA')>=0)  totalRec+=peso;
+          else if(tipo.indexOf('BONIF')>=0)  totalBon+=peso;
+          else if(tipo.indexOf('CONSIG')>=0) totalCon+=peso;
+          else if(tipo.indexOf('SALDO')>=0)  totalRec+=peso; // saldos entram no total
+          else if(tipo) totalRec+=peso; // qualquer outro tipo com quantidade
+        }
+      });
+
+      // Atualizar dia com peso planejado
+      var alvo=diaEnc||DIA;
+      if(alvo){
+        if(!D[alvo]) D[alvo]={mes:alvo.substring(0,7),km_plan:0,equipes:{}};
+        D[alvo]._importado=false; // permite reimportar Fusion depois
+      D[alvo].peso_plan_pv  =totalPV+totalRec+totalBon+totalCon;
+        D[alvo].peso_pv_only  =totalPV;
+        D[alvo].peso_trocas   =totalRec;
+        D[alvo].peso_bonif    =totalBon;
+        D[alvo].peso_consig   =totalCon;
+        D[alvo].has_prog      =true;
+        // Criar entrada no pvr_dias do Supabase
+        sbSaveDia(alvo);
+      }
+
+      document.getElementById('dz-e').classList.add('ok');
+      var totalGeral=totalPV+totalRec+totalBon+totalCon;
+      st.textContent=totalGeral.toLocaleString('pt-BR')+' kg distribuídos'+(diaEnc?' ('+diaEnc.split('-').reverse().join('/')+')':'');
+
+      // Navegar para o dia do encerramento
+      if(diaEnc){
+        MES=diaEnc.substring(0,7);
+        buildMesTabs();buildDiaNav();selDia(diaEnc);
+      } else {
+        renderKPIs();
+      }
+
+    }catch(err){
+      st.textContent='Erro: '+err.message;
+      console.error('importEnc error:',err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+window.addEventListener('load',function(){
+  loadLocal();
+  loadLocal(); // restaurar dados do browser
+  var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
+  var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+  if(dias.length)selDia(dias[dias.length-1]);
+});
+
+</script>
+</body>
+</html>
