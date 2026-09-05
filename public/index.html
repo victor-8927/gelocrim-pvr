@@ -644,8 +644,8 @@ function buildChips(t){
   var sel=(LD[DIA]||{})['c_'+t]||[];
   el.innerHTML=MOTS[t].map(function(x){return '<div class="chip'+(sel.indexOf(x)>=0?' on':'')+'" onclick="togC(\''+t+'\',\''+x+'\')">'+x+'</div>';}).join('');
 }
-function togC(t,x){if(!DIA)return;if(!LD[DIA])LD[DIA]={c_p:[],c_k:[],c_t:[]};var k='c_'+t,i=LD[DIA][k].indexOf(x);if(i>=0)LD[DIA][k].splice(i,1);else LD[DIA][k].push(x);buildChips(t);}
-function saveObs(){if(!DIA||!LD[DIA])return;LD[DIA].obs_p=document.getElementById('obs-p').value;LD[DIA].obs_k=document.getElementById('obs-k').value;LD[DIA].obs_t=document.getElementById('obs-t').value;}
+function togC(t,x){if(!DIA)return;if(!LD[DIA])LD[DIA]={c_p:[],c_k:[],c_t:[]};var k='c_'+t,i=LD[DIA][k].indexOf(x);if(i>=0)LD[DIA][k].splice(i,1);else LD[DIA][k].push(x);buildChips(t);saveLocal();}
+function saveObs(){if(!DIA||!LD[DIA])return;LD[DIA].obs_p=document.getElementById('obs-p').value;LD[DIA].obs_k=document.getElementById('obs-k').value;LD[DIA].obs_t=document.getElementById('obs-t').value;saveLocal();}
 
 function renderEquipes(){
   var el=document.getElementById('eq-cards');
@@ -832,14 +832,15 @@ function togCancel(cid){
   if(!LC[DIA][cid])LC[DIA][cid]={};
   LC[DIA][cid].cancelada=!LC[DIA][cid].cancelada;
   if(LC[DIA][cid].cancelada)LC[DIA][cid].ok=false;
-  renderEquipes();renderKPIs();sbSaveDia(DIA);
+  renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);
 }
 function setCargaHod(cid,campo,v){
   if(!DIA)return;
   if(!LC[DIA][cid])LC[DIA][cid]={};
   LC[DIA][cid][campo]=v;
   renderKPIs();renderEquipes();
-  if(campo==='hod_ret'){sbSaveDia(DIA);saveLocal();}
+  saveLocal();
+  if(campo==='hod_ret')sbSaveDia(DIA);
 }
 function setCargaRet(cid,campo,v){
   if(!DIA)return;
@@ -850,7 +851,7 @@ function setCargaRet(cid,campo,v){
 }
 function setHod(mot,campo,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot][campo]=v;renderKPIs();renderEquipes();if(campo==='hod_ret')sbSaveDia(DIA);}
 function setRet(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].h_ret_real=v;renderKPIs();renderEquipes();sbSaveDia(DIA);saveLocal();}
-function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();}
+function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();saveLocal();}
 function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();sbSaveDia(DIA);saveLocal();}
 function encerrar(){if(!DIA)return;saveObs();var a=new Date();LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');sbSaveDia(DIA);saveLocal();buildDiaNav();selDia(DIA);}
