@@ -446,8 +446,13 @@ async function sbLoadDia(dia) {
     cargas.forEach(function(c) {
       if (!LC[dia]) LC[dia] = {};
       LC[dia][c.carga_id] = {
-        peso_real: c.peso_real,
-        ok:        c.ok || false
+        peso_real:    c.peso_real,
+        hod_ini:      c.hod_ini || '',
+        hod_ret:      c.hod_ret || '',
+        h_saida_real: c.h_saida_real || '',
+        h_ret_real:   c.h_ret_real || '',
+        cancelada:    c.cancelada || false,
+        ok:           c.ok || false
       };
     });
 
