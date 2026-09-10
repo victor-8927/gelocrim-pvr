@@ -1243,9 +1243,12 @@ async function carregar(){
   st.textContent='Carregando...';
 
   try{
+    // Calcular último dia do mês corretamente
+    var partes=mes.split('-');
+    var ultimoDia=new Date(+partes[0],+partes[1],0).getDate();
     DADOS_DIAS   = await sbGet('/rest/v1/pvr_dias?mes=eq.'+mes+'&order=dia');
-    DADOS_EQ     = await sbGet('/rest/v1/pvr_equipes?dia=gte.'+mes+'-01&dia=lte.'+mes+'-31&order=dia,motorista');
-    DADOS_CARGAS = await sbGet('/rest/v1/pvr_cargas?dia=gte.'+mes+'-01&dia=lte.'+mes+'-31&order=dia,motorista');
+    DADOS_EQ     = await sbGet('/rest/v1/pvr_equipes?dia=gte.'+mes+'-01&dia=lte.'+mes+'-'+ultimoDia+'&order=dia,motorista');
+    DADOS_CARGAS = await sbGet('/rest/v1/pvr_cargas?dia=gte.'+mes+'-01&dia=lte.'+mes+'-'+ultimoDia+'&order=dia,motorista');
 
     // Popular filtro de motoristas
     var mots=[...new Set(DADOS_EQ.map(function(e){return e.motorista;}))].sort();
