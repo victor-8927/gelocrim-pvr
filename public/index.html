@@ -400,7 +400,7 @@ function sbFetch(method, path, body) {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
       'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
+      'Prefer': 'return=minimal,resolution=merge-duplicates'
     },
     body: body ? JSON.stringify(body) : undefined
   });
@@ -516,7 +516,11 @@ async function sbSaveDia(dia) {
     if(allC.length) await sbFetch('POST','/rest/v1/pvr_cargas?on_conflict=dia,carga_id',allC);
     if(ind){ind.textContent='Salvo ✓';ind.style.color='var(--gr)';setTimeout(function(){ind.textContent='';},3000);}
   } catch(e){
-    console.warn('Supabase:',e.message||e);
+    console.error('Supabase ERRO:',e.message||e);
+    // Tentar mostrar o erro real
+    if(e.message&&e.message.indexOf('409')>=0){
+      console.error('Conflito de constraint — verificar UNIQUE em pvr_equipes/pvr_cargas');
+    }
     if(ind){ind.textContent='Local ⚠';ind.style.color='var(--am)';setTimeout(function(){ind.textContent='';},3000);}
   }
 }
