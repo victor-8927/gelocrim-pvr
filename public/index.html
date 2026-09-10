@@ -284,7 +284,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div style="text-align:right">
       <div class="live"><span class="dot"></span>Ao vivo</div>
       <div class="clk" id="clk"></div>
-      <div id="save-ind" style="font-size:9px;font-family:var(--mo);min-height:12px;text-align:right;margin-top:1px;font-weight:700"></div>
+      <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:2px">
+      <button onclick="forcSync()" style="padding:3px 10px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid rgba(0,194,255,.4);background:rgba(0,194,255,.1);color:var(--cy);font-family:var(--mo)">&#8593; Sync</button>
+      <div id="save-ind" style="font-size:9px;font-family:var(--mo);min-height:12px;text-align:right;font-weight:700"></div>
+    </div>
     </div>
   </div>
 </div>
@@ -487,6 +490,7 @@ async function sbSaveDia(dia) {
     }]);
     for(var i=0;i<eqs.length;i++){
       var mot=eqs[i], E=d.equipes[mot], le=(LE[dia]||{})[mot]||{};
+      console.log('Salvando equipe',mot,'dia',dia,'hod_ini=',le.hod_ini,'ok=',le.ok);
       await sbFetch('POST','/rest/v1/pvr_equipes?on_conflict=dia,motorista',[{
         dia:dia, motorista:mot, vdas:E.vdas||[], equipe:E.equipe||[],
         km_plan:E.km_plan||0, peso_plan:E.peso_plan||0,
@@ -513,7 +517,9 @@ async function sbSaveDia(dia) {
         });
       });
     });
+    console.log('Salvando',allC.length,'cargas do dia',dia);
     if(allC.length) await sbFetch('POST','/rest/v1/pvr_cargas?on_conflict=dia,carga_id',allC);
+    console.log('Cargas salvas OK');
     if(ind){ind.textContent='Salvo ✓';ind.style.color='var(--gr)';setTimeout(function(){ind.textContent='';},3000);}
   } catch(e){
     console.error('Supabase ERRO:',e.message||e);
@@ -894,6 +900,36 @@ function renderEquipes(){
 }
 
 
+async function forcSync(){
+  var ind=document.getElementById('save-ind');
+  if(ind){ind.textContent='Sincronizando...';ind.style.color='var(--am)';}
+  var erros=0, ok=0;
+  var dias=Object.keys(LE);
+  for(var i=0;i<dias.length;i++){
+    var dia=dias[i];
+    try{
+      await sbSaveDia(dia);
+      ok++;
+    }catch(e){
+      erros++;
+      console.error('Erro sync dia '+dia+':',e);
+    }
+  }
+  // Salvar dia atual se não estiver em LE
+  if(DIA&&dias.indexOf(DIA)<0){
+    try{await sbSaveDia(DIA);ok++;}catch(e){erros++;}
+  }
+  if(ind){
+    if(erros===0){
+      ind.textContent='Sync OK ✓ '+ok+' dias';
+      ind.style.color='var(--gr)';
+    }else{
+      ind.textContent='Sync '+ok+' OK / '+erros+' erros';
+      ind.style.color='var(--am)';
+    }
+    setTimeout(function(){ind.textContent='';},5000);
+  }
+}
 function saveLocal(){
   try{
     localStorage.setItem('pvr_LE',JSON.stringify(LE));
