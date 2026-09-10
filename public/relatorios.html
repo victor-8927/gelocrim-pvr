@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Gelocrim — Relatórios PVR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{
+  --bg:#05202F;--s0:rgba(255,255,255,.04);--s1:rgba(255,255,255,.08);--b:rgba(255,255,255,.10);
+  --cy:#00C2FF;--gr:#4DFFC3;--am:#FFD166;--rd:#FF8090;--pu:#C084FC;
+  --grd:rgba(77,255,195,.10);--amd:rgba(255,209,102,.10);--rdd:rgba(255,128,144,.10);
+  --tx:#EEF6FF;--tx2:#B8D4E8;--tx3:#7AA3BE;
+  --ff:'Inter',sans-serif;--mo:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);font-family:var(--ff);color:var(--tx);min-height:100vh}
+.app{padding:14px;max-width:1100px;margin:0 auto}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--b)}
+.logo{width:38px;height:38px;background:linear-gradient(135deg,#1565A8,#00C2FF);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-right:9px;flex-shrink:0}
+.ht{font-size:13px;font-weight:700}.hs{font-size:9px;color:var(--tx2);margin-top:1px}
+.back-btn{padding:7px 14px;border-radius:8px;background:var(--s1);border:1px solid var(--b);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.back-btn:hover{background:rgba(255,255,255,.12)}
+
+/* FILTROS */
+.filtros{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.fil-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:600}
+.fil-sel{background:var(--s1);border:1px solid var(--b);border-radius:7px;color:var(--tx);font-size:11px;font-weight:600;padding:6px 10px;cursor:pointer;font-family:var(--ff)}
+.fil-sel:focus{outline:none;border-color:var(--cy)}
+.fil-btn{padding:6px 14px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:var(--ff);transition:all .15s}
+.fil-btn.primary{background:linear-gradient(135deg,#1A5FAA,rgba(0,194,255,.6));color:#fff}
+.fil-btn.primary:hover{opacity:.9}
+
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--tx3);font-size:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--b);border-top-color:var(--cy);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto}
+.tab{padding:8px 16px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--b);background:var(--s0);color:var(--tx2);white-space:nowrap;transition:all .15s}
+.tab.active{background:linear-gradient(135deg,#1A5FAA,rgba(0,194,255,.55));border-color:rgba(0,194,255,.4);color:#fff}
+
+/* CARDS RESUMO */
+.resumo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.rc{background:var(--s0);border:1px solid var(--b);border-radius:12px;padding:12px;text-align:center}
+.rc-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);margin-bottom:6px}
+.rc-val{font-size:22px;font-weight:800;font-family:var(--mo);line-height:1}
+.rc-sub{font-size:8px;color:var(--tx3);margin-top:3px}
+
+/* TABELA */
+.tbl-wrap{background:var(--s0);border:1px solid var(--b);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.tbl-hdr{padding:12px 16px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between}
+.tbl-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);padding:8px 12px;border-bottom:1px solid var(--b);font-weight:600;white-space:nowrap}
+th.r{text-align:right}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px;font-family:var(--mo);vertical-align:middle}
+td.r{text-align:right}
+td.lbl{font-family:var(--ff);color:var(--tx2);font-size:10px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700}
+.b-ok{background:var(--grd);color:var(--gr)}.b-warn{background:var(--amd);color:var(--am)}.b-bad{background:var(--rdd);color:var(--rd)}.b-nd{background:var(--s1);color:var(--tx3)}
+.dif-ok{color:var(--gr)}.dif-warn{color:var(--am)}.dif-bad{color:var(--rd)}.dif-nd{color:var(--tx3)}
+
+/* GRÁFICO */
+.chart-wrap{background:var(--s0);border:1px solid var(--b);border-radius:12px;padding:16px;margin-bottom:16px}
+.chart-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin-bottom:12px}
+.chart-canvas{width:100%;height:220px}
+
+/* ANÁLISE EXCESSO */
+.excesso-card{background:var(--s0);border:1px solid var(--b);border-radius:12px;padding:14px;margin-bottom:10px}
+.excesso-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.excesso-mot{font-size:14px;font-weight:800}
+.excesso-badges{display:flex;gap:5px;flex-wrap:wrap}
+.excesso-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.eg-item{background:var(--s1);border-radius:8px;padding:8px;text-align:center}
+.eg-lbl{font-size:7.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px}
+.eg-val{font-size:14px;font-weight:700;font-family:var(--mo)}
+.excesso-conclusao{padding:8px 12px;border-radius:7px;font-size:10px;font-weight:600;border:1px solid}
+.conclusao-atraso{background:var(--amd);border-color:rgba(255,209,102,.3);color:var(--am)}
+.conclusao-rua{background:var(--rdd);border-color:rgba(255,128,144,.3);color:var(--rd)}
+.conclusao-ok{background:var(--grd);border-color:rgba(77,255,195,.3);color:var(--gr)}
+
+.footer{text-align:center;padding:10px 0 4px;font-size:8.5px;color:var(--tx3);border-top:1px solid var(--b);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <div style="display:flex;align-items:center">
+    <div class="logo">&#129302;</div>
+    <div><div class="ht">Gelocrim &#8212; Relatórios PVR</div>
+    <div class="hs">Análise real de tempo · KM · Peso por equipe e rota</div></div>
+  </div>
+  <a class="back-btn" href="/">&#8592; Painel</a>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros">
+  <span class="fil-label">Período:</span>
+  <select class="fil-sel" id="fil-mes">
+    <option value="2026-09">Set 2026</option>
+    <option value="2026-08">Ago 2026</option>
+  </select>
+  <select class="fil-sel" id="fil-mot">
+    <option value="">Todas as equipes</option>
+  </select>
+  <button class="fil-btn primary" onclick="carregar()">Atualizar</button>
+  <span id="status-load" style="font-size:9px;color:var(--tx3)"></span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('resumo',this)">Resumo</div>
+  <div class="tab" onclick="showTab('tempo',this)">Tempo</div>
+  <div class="tab" onclick="showTab('km',this)">KM</div>
+  <div class="tab" onclick="showTab('peso',this)">Peso</div>
+</div>
+
+<!-- CONTEÚDO -->
+<div id="tab-resumo"></div>
+<div id="tab-tempo" style="display:none"></div>
+<div id="tab-km" style="display:none"></div>
+<div id="tab-peso" style="display:none"></div>
+
+<div class="footer">Gelocrim Industria de Gelo Ltda &#183; Manaus-AM &#183; PVR Relatórios</div>
+</div>
+
+<script>
+var SB_URL='https://wziprddrflgpzankofad.supabase.co';
+var SB_KEY='sb_publishable_h8o3BLGJUUcf8dVjdEY3kg_EhdmcC2o';
+var DADOS_DIAS=[], DADOS_EQ=[], DADOS_CARGAS=[];
+var TAB_ATUAL='resumo';
+var LIMITE=17*60; // 17:00 em minutos
+
+function hm2min(h){if(!h)return null;var p=h.split(':');return +p[0]*60+ +p[1];}
+function min2hm(m){if(m===null||m===undefined)return '---';var mm=Math.abs(Math.round(m));return String(Math.floor(mm/60)).padStart(2,'0')+':'+String(mm%60).padStart(2,'0');}
+function fN(v,d){if(!v&&v!==0)return '---';return(+v).toLocaleString('pt-BR',{maximumFractionDigits:d||0,minimumFractionDigits:d||0});}
+
+async function sbGet(path){
+  var r=await fetch(SB_URL+path,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  if(!r.ok)throw new Error(r.status);
+  return r.json();
+}
+
+async function carregar(){
+  var mes=document.getElementById('fil-mes').value;
+  var st=document.getElementById('status-load');
+  st.textContent='Carregando...';
+
+  try{
+    DADOS_DIAS   = await sbGet('/rest/v1/pvr_dias?mes=eq.'+mes+'&order=dia');
+    DADOS_EQ     = await sbGet('/rest/v1/pvr_equipes?dia=gte.'+mes+'-01&dia=lte.'+mes+'-31&order=dia,motorista');
+    DADOS_CARGAS = await sbGet('/rest/v1/pvr_cargas?dia=gte.'+mes+'-01&dia=lte.'+mes+'-31&order=dia,motorista');
+
+    // Popular filtro de motoristas
+    var mots=[...new Set(DADOS_EQ.map(function(e){return e.motorista;}))].sort();
+    var sel=document.getElementById('fil-mot');
+    sel.innerHTML='<option value="">Todas as equipes</option>';
+    mots.forEach(function(m){sel.innerHTML+='<option value="'+m+'">'+m+'</option>';});
+
+    st.textContent=DADOS_DIAS.length+' dias carregados';
+    renderTudo();
+  }catch(e){
+    st.textContent='Erro: '+e.message;
+    console.error(e);
+  }
+}
+
+function showTab(tab, el){
+  TAB_ATUAL=tab;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  document.querySelectorAll('[id^="tab-"]').forEach(function(d){d.style.display='none';});
+  document.getElementById('tab-'+tab).style.display='';
+  renderTudo();
+}
+
+function renderTudo(){
+  var motFil=document.getElementById('fil-mot').value;
+  var eq=DADOS_EQ.filter(function(e){return !motFil||e.motorista===motFil;});
+  var ca=DADOS_CARGAS.filter(function(c){return !motFil||c.motorista===motFil;});
+
+  if(TAB_ATUAL==='resumo') renderResumo(eq, ca);
+  else if(TAB_ATUAL==='tempo') renderTempo(eq, ca);
+  else if(TAB_ATUAL==='km') renderKM(eq, ca);
+  else if(TAB_ATUAL==='peso') renderPeso(eq, ca);
+}
+
+// ── RESUMO ──
+function renderResumo(eq, ca){
+  var el=document.getElementById('tab-resumo');
+  var nDias=DADOS_DIAS.length;
+  var nEqTotal=eq.length;
+  var kmReal=eq.reduce(function(s,e){return s+(e.km_real||0);},0);
+  var pesoReal=ca.filter(function(c){return c.ok&&!c.cancelada;}).reduce(function(s,c){return s+(+(c.peso_real||c.peso_plan)||0);},0);
+  var excessos=eq.filter(function(e){
+    if(!e.h_ret_real)return false;
+    return hm2min(e.h_ret_real)>LIMITE;
+  });
+  var pctExc=nEqTotal?Math.round(excessos.length/nEqTotal*100):0;
+
+  var html='<div class="resumo-grid">';
+  html+='<div class="rc"><div class="rc-lbl">Dias analisados</div><div class="rc-val" style="color:var(--cy)">'+nDias+'</div><div class="rc-sub">com dados</div></div>';
+  html+='<div class="rc"><div class="rc-lbl">KM real total</div><div class="rc-val" style="color:var(--am)">'+fN(Math.round(kmReal))+'<span style="font-size:12px"> km</span></div><div class="rc-sub">hodômetro</div></div>';
+  html+='<div class="rc"><div class="rc-lbl">Peso real total</div><div class="rc-val" style="color:var(--gr)">'+fN(Math.round(pesoReal/1000),1)+'<span style="font-size:12px"> t</span></div><div class="rc-sub">confirmado</div></div>';
+  html+='<div class="rc"><div class="rc-lbl">Tempo excedido</div><div class="rc-val" style="color:var(--rd)">'+pctExc+'<span style="font-size:12px">%</span></div><div class="rc-sub">'+excessos.length+'/'+nEqTotal+' equipes</div></div>';
+  html+='</div>';
+
+  // Tabela por dia
+  html+='<div class="tbl-wrap"><div class="tbl-hdr"><span class="tbl-title">Resumo por dia</span></div><table>';
+  html+='<thead><tr><th>Dia</th><th class="r">Equipes</th><th class="r">KM plan.</th><th class="r">KM real</th><th class="r">Dif. KM</th><th class="r">Peso plan.</th><th class="r">Peso real</th><th class="r">Excedidos</th></tr></thead><tbody>';
+
+  DADOS_DIAS.forEach(function(d){
+    var eqDia=eq.filter(function(e){return e.dia===d.dia;});
+    var caDia=ca.filter(function(c){return c.dia===d.dia;});
+    var kmP=eqDia.reduce(function(s,e){return s+(e.km_plan||0);},0);
+    var kmR=eqDia.reduce(function(s,e){return s+(e.km_real||0);},0);
+    var pesoP=d.peso_plan_pv||0;
+    var pesoR=caDia.filter(function(c){return c.ok&&!c.cancelada;}).reduce(function(s,c){return s+(+(c.peso_real||c.peso_plan)||0);},0);
+    var exc=eqDia.filter(function(e){return e.h_ret_real&&hm2min(e.h_ret_real)>LIMITE;}).length;
+    var difKm=kmR?Math.round(kmR-kmP):null;
+    var dts=d.dia.split('-');
+    var dt=new Date(+dts[0],+dts[1]-1,+dts[2]);
+    var nDs=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    var label=dts[2]+'/'+dts[1]+' '+nDs[dt.getDay()];
+    var difCls=difKm===null?'dif-nd':Math.abs(difKm)>20?'dif-bad':Math.abs(difKm)>5?'dif-warn':'dif-ok';
+
+    html+='<tr>';
+    html+='<td class="lbl">'+label+(d.locked?' &#128274;':'')+'</td>';
+    html+='<td class="r">'+eqDia.length+'</td>';
+    html+='<td class="r">'+fN(Math.round(kmP))+' km</td>';
+    html+='<td class="r">'+( kmR?fN(Math.round(kmR))+' km':'---')+'</td>';
+    html+='<td class="r"><span class="'+difCls+'">'+(difKm!==null?(difKm>0?'+':'')+fN(difKm)+' km':'---')+'</span></td>';
+    html+='<td class="r">'+fN(Math.round(pesoP))+' kg</td>';
+    html+='<td class="r">'+( pesoR?fN(Math.round(pesoR))+' kg':'---')+'</td>';
+    html+='<td class="r">'+(exc>0?'<span class="badge b-bad">'+exc+' equipe(s)</span>':'<span class="badge b-ok">OK</span>')+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+}
+
+// ── TEMPO ──
+function renderTempo(eq, ca){
+  var el=document.getElementById('tab-tempo');
+  var html='';
+
+  // Tabela de análise de excesso por equipe/dia
+  html+='<div class="tbl-wrap"><div class="tbl-hdr"><span class="tbl-title">Análise de tempo por equipe</span></div><table>';
+  html+='<thead><tr><th>Dia</th><th>Equipe</th><th class="r">Saída plan.</th><th class="r">Saída real</th><th class="r">Atraso saída</th><th class="r">Retorno</th><th class="r">Excesso 17:00</th><th class="r">Causa provável</th></tr></thead><tbody>';
+
+  eq.forEach(function(e){
+    if(!e.h_saida_plan&&!e.h_ret_real)return;
+    var hSP=e.h_saida_plan||'07:00';
+    // Saída real vem das cargas
+    var caDia=ca.filter(function(c){return c.dia===e.dia&&c.motorista===e.motorista&&c.h_saida_real;});
+    var hSR=caDia.length?caDia.reduce(function(min,c){return c.h_saida_real<min?c.h_saida_real:min;},caDia[0].h_saida_real):null;
+    var hRR=e.h_ret_real||null;
+
+    var atrasoMin=hSR?hm2min(hSR)-hm2min(hSP):null;
+    var excessoMin=hRR?Math.max(0,hm2min(hRR)-LIMITE):null;
+
+    // Causa provável
+    var causa='---', causaCls='dif-nd';
+    if(excessoMin!==null&&excessoMin>0){
+      if(atrasoMin!==null&&atrasoMin>=excessoMin*0.8){
+        causa='Atraso saída'; causaCls='dif-warn';
+      } else if(atrasoMin!==null&&atrasoMin>0){
+        causa='Atraso + rua'; causaCls='dif-bad';
+      } else {
+        causa='Ocorrência na rua'; causaCls='dif-bad';
+      }
+    } else if(hRR){
+      causa='Dentro do horário'; causaCls='dif-ok';
+    }
+
+    var dts=e.dia.split('-');
+    var dt=new Date(+dts[0],+dts[1]-1,+dts[2]);
+    var nDs=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    html+='<tr>';
+    html+='<td class="lbl">'+dts[2]+'/'+dts[1]+' '+nDs[dt.getDay()]+'</td>';
+    html+='<td class="lbl" style="font-weight:700">'+e.motorista+'</td>';
+    html+='<td class="r">'+hSP+'</td>';
+    html+='<td class="r">'+(hSR||'---')+'</td>';
+    html+='<td class="r"><span class="'+(atrasoMin===null?'dif-nd':atrasoMin>30?'dif-bad':atrasoMin>0?'dif-warn':'dif-ok')+'">'+(atrasoMin!==null?(atrasoMin>0?'+':'')+min2hm(atrasoMin):'---')+'</span></td>';
+    html+='<td class="r">'+(hRR||'---')+'</td>';
+    html+='<td class="r"><span class="'+(excessoMin===null?'dif-nd':excessoMin>0?'dif-bad':'dif-ok')+'">'+(excessoMin!==null&&excessoMin>0?'+'+min2hm(excessoMin):(hRR?'OK':'---'))+'</span></td>';
+    html+='<td class="r"><span class="'+causaCls+'">'+causa+'</span></td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+  // Gráfico de tempo
+  renderGraficoTempo(eq, ca);
+}
+
+function renderGraficoTempo(eq, ca){
+  var el=document.getElementById('tab-tempo');
+  var dias=[...new Set(eq.map(function(e){return e.dia;}))].sort();
+  var mots=[...new Set(eq.map(function(e){return e.motorista;}))].sort();
+  var cores=['#00C2FF','#4DFFC3','#FFD166','#FF8090','#C084FC','#FF9A3C'];
+
+  var datasets=mots.map(function(mot,idx){
+    return {
+      label:mot,
+      data:dias.map(function(dia){
+        var e=eq.find(function(x){return x.dia===dia&&x.motorista===mot;});
+        if(!e||!e.h_ret_real)return null;
+        return Math.max(0,hm2min(e.h_ret_real)-LIMITE);
+      }),
+      borderColor:cores[idx%cores.length],
+      backgroundColor:cores[idx%cores.length]+'33',
+      tension:.3, fill:false, spanGaps:true, pointRadius:4
+    };
+  });
+
+  var wrap=document.createElement('div');
+  wrap.className='chart-wrap';
+  wrap.innerHTML='<div class="chart-title">Minutos excedidos após 17:00 por equipe</div><canvas id="chart-tempo" class="chart-canvas"></canvas>';
+  el.appendChild(wrap);
+
+  var ctx=document.getElementById('chart-tempo').getContext('2d');
+  new Chart(ctx,{
+    type:'line',
+    data:{labels:dias.map(function(d){return d.split('-')[2]+'/'+d.split('-')[1];}),datasets:datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#B8D4E8',font:{size:10}}}},
+      scales:{
+        x:{ticks:{color:'#7AA3BE',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#7AA3BE',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},
+           title:{display:true,text:'min excedidos',color:'#7AA3BE',font:{size:9}}}
+      }
+    }
+  });
+}
+
+// ── KM ──
+function renderKM(eq, ca){
+  var el=document.getElementById('tab-km');
+  var html='';
+
+  html+='<div class="tbl-wrap"><div class="tbl-hdr"><span class="tbl-title">KM real por equipe e dia</span></div><table>';
+  html+='<thead><tr><th>Dia</th><th>Equipe</th><th class="r">KM plan.</th><th class="r">KM real</th><th class="r">Diferença</th><th class="r">%</th></tr></thead><tbody>';
+
+  eq.filter(function(e){return e.km_real;}).forEach(function(e){
+    var difKm=Math.round((e.km_real-e.km_plan)*10)/10;
+    var pct=Math.round(e.km_real/e.km_plan*100-100);
+    var cls=Math.abs(difKm)>20?'dif-bad':Math.abs(difKm)>5?'dif-warn':'dif-ok';
+    var dts=e.dia.split('-');
+    var dt=new Date(+dts[0],+dts[1]-1,+dts[2]);
+    var nDs=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    html+='<tr>';
+    html+='<td class="lbl">'+dts[2]+'/'+dts[1]+' '+nDs[dt.getDay()]+'</td>';
+    html+='<td class="lbl" style="font-weight:700">'+e.motorista+'</td>';
+    html+='<td class="r">'+fN(e.km_plan,1)+' km</td>';
+    html+='<td class="r">'+fN(e.km_real,1)+' km</td>';
+    html+='<td class="r"><span class="'+cls+'">'+(difKm>0?'+':'')+fN(difKm,1)+' km</span></td>';
+    html+='<td class="r"><span class="'+cls+'">'+(pct>0?'+':'')+pct+'%</span></td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+
+  // Gráfico KM
+  var dias=[...new Set(eq.map(function(e){return e.dia;}))].sort();
+  var mots=[...new Set(eq.filter(function(e){return e.km_real;}).map(function(e){return e.motorista;}))].sort();
+  var cores=['#00C2FF','#4DFFC3','#FFD166','#FF8090','#C084FC','#FF9A3C'];
+
+  var wrap=document.createElement('div');
+  wrap.className='chart-wrap';
+  wrap.innerHTML='<div class="chart-title">KM real por equipe</div><canvas id="chart-km" class="chart-canvas"></canvas>';
+  el.appendChild(wrap);
+
+  var ctx=document.getElementById('chart-km').getContext('2d');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:dias.map(function(d){return d.split('-')[2]+'/'+d.split('-')[1];}),
+      datasets:mots.map(function(mot,idx){
+        return {
+          label:mot,
+          data:dias.map(function(dia){
+            var e=eq.find(function(x){return x.dia===dia&&x.motorista===mot;});
+            return e&&e.km_real?e.km_real:0;
+          }),
+          backgroundColor:cores[idx%cores.length]+'88',
+          borderColor:cores[idx%cores.length], borderWidth:1
+        };
+      })
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#B8D4E8',font:{size:10}}}},
+      scales:{
+        x:{stacked:false,ticks:{color:'#7AA3BE',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#7AA3BE',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},
+           title:{display:true,text:'km',color:'#7AA3BE',font:{size:9}}}
+      }
+    }
+  });
+}
+
+// ── PESO ──
+function renderPeso(eq, ca){
+  var el=document.getElementById('tab-peso');
+  var html='';
+
+  // Agrupar por dia e motorista
+  var dias=[...new Set(ca.map(function(c){return c.dia;}))].sort();
+  var mots=[...new Set(ca.map(function(c){return c.motorista;}))].sort();
+
+  html+='<div class="tbl-wrap"><div class="tbl-hdr"><span class="tbl-title">Peso real por equipe e dia</span></div><table>';
+  html+='<thead><tr><th>Dia</th><th>Equipe</th><th class="r">Planejado</th><th class="r">Realizado</th><th class="r">Diferença</th><th class="r">Cancelado</th></tr></thead><tbody>';
+
+  dias.forEach(function(dia){
+    mots.forEach(function(mot){
+      var caMot=ca.filter(function(c){return c.dia===dia&&c.motorista===mot;});
+      if(!caMot.length)return;
+      var pesoP=caMot.reduce(function(s,c){return s+(c.peso_plan||0);},0);
+      var pesoR=caMot.filter(function(c){return c.ok&&!c.cancelada;}).reduce(function(s,c){return s+(+(c.peso_real||c.peso_plan)||0);},0);
+      var pesoCan=caMot.filter(function(c){return c.cancelada;}).reduce(function(s,c){return s+(c.peso_plan||0);},0);
+      var dif=pesoR?Math.round(pesoR-pesoP):null;
+      var cls=dif===null?'dif-nd':Math.abs(dif)>5000?'dif-warn':'dif-ok';
+      var dts=dia.split('-');
+      var dt=new Date(+dts[0],+dts[1]-1,+dts[2]);
+      var nDs=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+      html+='<tr>';
+      html+='<td class="lbl">'+dts[2]+'/'+dts[1]+' '+nDs[dt.getDay()]+'</td>';
+      html+='<td class="lbl" style="font-weight:700">'+mot+'</td>';
+      html+='<td class="r">'+fN(Math.round(pesoP))+' kg</td>';
+      html+='<td class="r">'+( pesoR?fN(Math.round(pesoR))+' kg':'---')+'</td>';
+      html+='<td class="r"><span class="'+cls+'">'+(dif!==null?(dif>0?'+':'')+fN(dif)+' kg':'---')+'</span></td>';
+      html+='<td class="r">'+(pesoCan?'<span class="dif-warn">-'+fN(Math.round(pesoCan))+' kg</span>':'—')+'</td>';
+      html+='</tr>';
+    });
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+
+  // Gráfico peso por dia
+  var pesos=dias.map(function(dia){
+    return ca.filter(function(c){return c.dia===dia&&c.ok&&!c.cancelada;})
+      .reduce(function(s,c){return s+(+(c.peso_real||c.peso_plan)||0);},0);
+  });
+  var wrap=document.createElement('div');
+  wrap.className='chart-wrap';
+  wrap.innerHTML='<div class="chart-title">Peso real distribuido por dia (kg)</div><canvas id="chart-peso" class="chart-canvas"></canvas>';
+  el.appendChild(wrap);
+  var ctx=document.getElementById('chart-peso').getContext('2d');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:dias.map(function(d){return d.split('-')[2]+'/'+d.split('-')[1];}),
+      datasets:[{
+        label:'Peso real (kg)',
+        data:pesos,
+        backgroundColor:'rgba(77,255,195,.5)',
+        borderColor:'#4DFFC3', borderWidth:1
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#B8D4E8',font:{size:10}}}},
+      scales:{
+        x:{ticks:{color:'#7AA3BE',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#7AA3BE',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},
+           title:{display:true,text:'kg',color:'#7AA3BE',font:{size:9}}}
+      }
+    }
+  });
+}
+
+window.addEventListener('load', function(){carregar();});
+</script>
+</body>
+</html>
