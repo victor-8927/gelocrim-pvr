@@ -619,7 +619,7 @@ function buildChips(t){
   var sel=(LD[DIA]||{})['c_'+t]||[];
   el.innerHTML=MOTS[t].map(function(x){return '<div class="chip'+(sel.indexOf(x)>=0?' on':'')+'" onclick="togC(\''+t+'\',\''+x+'\')">'+x+'</div>';}).join('');
 }
-function togC(t,x){if(!DIA)return;if(!LD[DIA])LD[DIA]={c_p:[],c_k:[],c_t:[]};var k='c_'+t,i=LD[DIA][k].indexOf(x);if(i>=0)LD[DIA][k].splice(i,1);else LD[DIA][k].push(x);buildChips(t);saveLocal();}
+function togC(t,x){if(!DIA)return;if(!LD[DIA])LD[DIA]={c_p:[],c_k:[],c_t:[]};var k='c_'+t,i=LD[DIA][k].indexOf(x);if(i>=0)LD[DIA][k].splice(i,1);else LD[DIA][k].push(x);buildChips(t);saveLocal();sbSaveDia(DIA);}
 function saveObs(){if(!DIA||!LD[DIA])return;LD[DIA].obs_p=document.getElementById('obs-p').value;LD[DIA].obs_k=document.getElementById('obs-k').value;LD[DIA].obs_t=document.getElementById('obs-t').value;saveLocal();}
 
 function renderEquipes(){
