@@ -1621,11 +1621,48 @@ function renderPeso(eq, ca){
 window.addEventListener('load', function(){carregar();});
 
 window.addEventListener('load',function(){
-  loadLocal();
   loadLocal(); // restaurar dados do browser
-  var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
-  var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
-  if(dias.length)selDia(dias[dias.length-1]);
+
+  // Carregar dias do Supabase se não tiver localmente
+  var diasLocais=Object.keys(D);
+  if(diasLocais.length>0){
+    // Tem dados embutidos — navegar normalmente
+    var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
+    var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+    if(dias.length)selDia(dias[dias.length-1]);
+  }
+  
+  // Sempre tentar carregar dias extras do Supabase (lançados via painel)
+  fetch(SB_URL+'/rest/v1/pvr_dias?order=dia&select=dia,mes,km_plan,peso_plan_pv,has_prog,locked,lock_ts,obs_peso,obs_km,obs_tempo,chips_peso,chips_km,chips_tempo',{
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  }).then(function(r){return r.json();}).then(function(dias_sb){
+    if(!dias_sb||!dias_sb.length)return;
+    var mudou=false;
+    dias_sb.forEach(function(d){
+      if(!D[d.dia]){
+        // Dia novo do Supabase — criar estrutura mínima
+        D[d.dia]={mes:d.mes,km_plan:d.km_plan||0,peso_plan_pv:d.peso_plan_pv||0,has_prog:d.has_prog||false,equipes:{}};
+        mudou=true;
+      }
+      if(!LD[d.dia])LD[d.dia]={c_p:[],c_k:[],c_t:[]};
+      if(d.locked){
+        LD[d.dia].locked=true;
+        LD[d.dia].lock_ts=d.lock_ts||'';
+        LD[d.dia].obs_p=d.obs_peso||'';
+        LD[d.dia].obs_k=d.obs_km||'';
+        LD[d.dia].obs_t=d.obs_tempo||'';
+        LD[d.dia].c_p=d.chips_peso||[];
+        LD[d.dia].c_k=d.chips_km||[];
+        LD[d.dia].c_t=d.chips_tempo||[];
+      }
+    });
+    if(mudou||dias_sb.length>0){
+      var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
+      var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+      if(diasM.length&&!DIA)selDia(diasM[diasM.length-1]);
+      else if(DIA)selDia(DIA);
+    }
+  }).catch(function(e){console.warn('Load dias Supabase:',e);});
 });
 
 </script>
