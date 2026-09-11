@@ -229,12 +229,16 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="kc p">
     <div class="kc-title">1 &#8212; Peso distribuido</div>
     <div class="duo">
-      <div class="dc"><div class="dl">Planejado PV</div><div class="dv" id="vpp" style="color:rgba(0,194,255,.7)">---<span class="du">kg</span></div><div class="ds">Programacao</div></div>
+      <div class="dc"><div class="dl">Total planejado</div><div class="dv" id="vpp" style="color:rgba(0,194,255,.7)">---<span class="du">kg</span></div><div class="ds">Programacao</div></div>
       <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vpr" style="color:var(--gr)">---<span class="du">kg</span></div><div class="ds" id="vpr-s">confirme abaixo</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+      <div class="dc-small"><div class="dl-small" style="color:var(--cy)">&#128666; Rotas</div><div class="dv-small" id="vp-rotas" style="color:var(--cy)">---<span style="font-size:9px"> kg</span></div></div>
+      <div class="dc-small"><div class="dl-small" style="color:var(--pu)">&#11088; Eventos</div><div class="dv-small" id="vp-eventos" style="color:var(--pu)">---<span style="font-size:9px"> kg</span></div></div>
     </div>
     <div class="duo-small">
       <div class="dc-small"><div class="dl-small" style="color:var(--am)">&#10005; Cancelado</div><div class="dv-small" id="vp-can" style="color:var(--am)">---<span style="font-size:9px"> kg</span></div></div>
-      <div class="dc-small"><div class="dl-small" style="color:var(--cy)">Replanejado</div><div class="dv-small" id="vp-rep" style="color:var(--cy)">---<span style="font-size:9px"> kg</span></div></div>
+      <div class="dc-small"><div class="dl-small" style="color:var(--tx2)">Replanejado</div><div class="dv-small" id="vp-rep" style="color:var(--tx2)">---<span style="font-size:9px"> kg</span></div></div>
     </div>
     <div class="bar-lbl"><span id="lpp">---</span><span id="lpr">---</span></div>
     <div class="bar-wrap"><div class="bar-bg" id="bpp" style="background:rgba(0,194,255,.3)"></div><div class="bar-r" id="bpr" style="background:#4DFFC3"></div></div>
@@ -541,6 +545,13 @@ function renderKPIs(){
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
   var txtP=nOk+'/'+tot+' conf.';if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
   document.getElementById('vpr-s').textContent=txtP;
+  // Rotas vs Eventos
+  var pesoRotas=d.peso_rotas||0,pesoEv=d.peso_eventos||0;
+  if(pesoRotas||pesoEv){
+    var elR=document.getElementById('vp-rotas'),elE=document.getElementById('vp-eventos');
+    if(elR)elR.innerHTML=fN(pesoRotas)+'<span style="font-size:9px"> kg</span>';
+    if(elE)elE.innerHTML=fN(pesoEv)+'<span style="font-size:9px"> kg</span>';
+  }
   if(pesoCan>0){setV('vp-can','-'+fN(pesoCan),'kg');setV('vp-rep',fN(pesoReplan),'kg');}
   else{document.getElementById('vp-can').innerHTML='---<span class="du">kg</span>';document.getElementById('vp-rep').innerHTML='---<span class="du">kg</span>';}
   setBar('bpp','bpr','lpp','lpr',pesoReplan||pp,pr,'#4DFFC3');
@@ -765,24 +776,45 @@ function importEnc(inp){
       var hdr=null;for(var i=0;i<rows.length;i++){if(rows[i][0]&&String(rows[i][0]).toUpperCase().indexOf('ROTA')>=0){hdr=i;break;}}
       if(hdr===null){st.textContent='Cabecalho nao encontrado';return;}
       function qty(v){try{return v&&String(v).trim()&&String(v).trim()!=='0'?parseFloat(String(v).replace(',','.')):0;}catch(e){return 0;}}
-      var totalPV=0,totalRec=0,totalBon=0,totalCon=0;
-      rows.slice(hdr+1).forEach(function(row){
-        var tipo=String(row[9]||'').trim().toUpperCase();
-        var p=qty(row[10])*3+qty(row[11])*6+qty(row[12])*11+qty(row[13])*23+qty(row[14])*45+qty(row[15])*55;
-        if(!p)return;
-        if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)totalPV+=p;
-        else if(tipo.indexOf('TROCA')>=0)totalRec+=p;
-        else if(tipo.indexOf('BONIF')>=0)totalBon+=p;
-        else if(tipo.indexOf('CONSIG')>=0)totalCon+=p;
-        else totalPV+=p;
-      });
+      var totalPV=0,totalRec=0,totalBon=0,totalCon=0,totalEv=0;
+              var eventos=[];
+        rows.slice(hdr+1).forEach(function(row){
+          var rota=String(row[0]||'').trim();
+          var vda=String(row[1]||'').trim();
+          var nome=String(row[5]||'').trim();
+          var oc=String(row[7]||'').trim();
+          var tipo=String(row[9]||'').trim().toUpperCase();
+          var obs='';
+          for(var ci=row.length-1;ci>=16;ci--){if(row[ci]&&String(row[ci]).trim()){obs=String(row[ci]).trim();break;}}
+          var p=qty(row[10])*3+qty(row[11])*6+qty(row[12])*11+qty(row[13])*23+qty(row[14])*45+qty(row[15])*55;
+          if(!p)return;
+          if(rota.toUpperCase().indexOf('822')>=0||tipo.indexOf('CONSIG')>=0){
+            totalCon+=p;
+            eventos.push({rota:rota||'ROTA 822',vda:vda,motorista:nome,oc:oc,peso:p,obs:obs});
+            return;
+          }
+          if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)totalPV+=p;
+          else if(tipo.indexOf('TROCA')>=0)totalRec+=p;
+          else if(tipo.indexOf('BONIF')>=0)totalBon+=p;
+          else totalPV+=p;
+        });
+        // Criar cargas de evento no D[alvo]
+        eventos.forEach(function(ev){
+          var mot=ev.motorista||'EVENTO';
+          if(!D[alvo].equipes[mot])D[alvo].equipes[mot]={cargas:[],vdas:[ev.vda],equipe:[mot],km_plan:0,peso_plan:ev.peso,h_saida_plan:'07:00'};
+          var cargaId='ev_'+Math.random().toString(36).substr(2,8);
+          D[alvo].equipes[mot].cargas.push({id:cargaId,rota:ev.rota,vda:ev.vda,km_plan:0,peso_plan:ev.peso,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:'evento',obs:ev.obs,oc:ev.oc});
+        });;
       if(!D[alvo])D[alvo]={mes:alvo.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
-      D[alvo].peso_plan_pv=totalPV+totalRec+totalBon+totalCon;
+      var totalRotas=totalPV+totalRec+totalBon;
+      var totalGeral=totalRotas+totalCon+totalEv;
+      D[alvo].peso_plan_pv=totalGeral;
+      D[alvo].peso_rotas=totalRotas;
+      D[alvo].peso_eventos=totalCon+totalEv;
       D[alvo].has_prog=true;
       if(!LD[alvo])LD[alvo]={c_p:[],c_k:[],c_t:[]};
       sbSaveDia(alvo);
-      var total=totalPV+totalRec+totalBon+totalCon;
-      st.textContent=total.toLocaleString('pt-BR')+' kg distribuidos';
+      st.textContent=totalGeral.toLocaleString('pt-BR')+' kg (rotas: '+totalRotas.toLocaleString('pt-BR')+' | eventos: '+(totalCon+totalEv).toLocaleString('pt-BR')+')';
       if(DIA===alvo)renderKPIs();
     }catch(err){st.textContent='Erro: '+err.message;console.error(err);}
     inp.value='';
