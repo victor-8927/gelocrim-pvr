@@ -1654,48 +1654,39 @@ function renderPeso(eq, ca){
 // carregar() só sob demanda
 
 window.addEventListener('load',function(){
-  loadLocal();
+  try{loadLocal();}catch(e){}
+  try{
+    var meses=getMeses();
+    MES=meses[meses.length-1];
+    buildMesTabs();
+    buildDiaNav();
+    var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+    if(dias.length)selDia(dias[dias.length-1]);
+  }catch(e){console.error('Load erro:',e);}
 
-  // 1. Renderizar com dados embutidos primeiro (instantâneo)
-  var meses=getMeses();
-  MES=meses[meses.length-1];
-  buildMesTabs();
-  buildDiaNav();
-  var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
-  if(dias.length) selDia(dias[dias.length-1]);
-
-  // 2. Buscar dias do Supabase e atualizar navegação
+  // Buscar dias do Supabase em background
   fetch(SB_URL+'/rest/v1/pvr_dias?order=dia&select=dia,mes,km_plan,peso_plan_pv,has_prog,locked,lock_ts,obs_peso,obs_km,obs_tempo,chips_peso,chips_km,chips_tempo',{
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
   })
-  .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+  .then(function(r){return r.ok?r.json():null;})
   .then(function(dias_sb){
     if(!dias_sb||!dias_sb.length)return;
     dias_sb.forEach(function(d){
-      if(!D[d.dia]) D[d.dia]={mes:d.mes,km_plan:+d.km_plan||0,peso_plan_pv:+d.peso_plan_pv||0,has_prog:d.has_prog||false,equipes:{}};
-      if(!LD[d.dia]) LD[d.dia]={c_p:[],c_k:[],c_t:[]};
+      if(!D[d.dia])D[d.dia]={mes:d.mes,km_plan:+d.km_plan||0,peso_plan_pv:+d.peso_plan_pv||0,has_prog:d.has_prog||false,equipes:{}};
+      if(!LD[d.dia])LD[d.dia]={c_p:[],c_k:[],c_t:[]};
       if(d.locked){
-        LD[d.dia].locked=true;
-        LD[d.dia].lock_ts=d.lock_ts||'';
-        LD[d.dia].obs_p=d.obs_peso||'';
-        LD[d.dia].obs_k=d.obs_km||'';
-        LD[d.dia].obs_t=d.obs_tempo||'';
-        LD[d.dia].c_p=d.chips_peso||[];
-        LD[d.dia].c_k=d.chips_km||[];
-        LD[d.dia].c_t=d.chips_tempo||[];
+        LD[d.dia].locked=true;LD[d.dia].lock_ts=d.lock_ts||'';
+        LD[d.dia].obs_p=d.obs_peso||'';LD[d.dia].obs_k=d.obs_km||'';LD[d.dia].obs_t=d.obs_tempo||'';
+        LD[d.dia].c_p=d.chips_peso||[];LD[d.dia].c_k=d.chips_km||[];LD[d.dia].c_t=d.chips_tempo||[];
       }
     });
-    // Reconstruir navegação com todos os dias
-    var meses2=getMeses();
-    MES=meses2[meses2.length-1];
-    buildMesTabs();
-    buildDiaNav();
-    // Selecionar o dia mais recente
+    var meses2=getMeses();MES=meses2[meses2.length-1];
+    buildMesTabs();buildDiaNav();
     var dias2=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
-    if(dias2.length) selDia(dias2[dias2.length-1]);
+    if(dias2.length)selDia(dias2[dias2.length-1]);
   })
-  .catch(function(e){console.warn('Supabase dias:',e);});
-});;
+  .catch(function(e){console.warn('Supabase:',e);});
+});;;
 
 </script>
 </body>
