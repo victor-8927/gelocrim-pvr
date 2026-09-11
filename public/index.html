@@ -1681,11 +1681,12 @@ window.addEventListener('load',function(){
         LD[d.dia].c_t=d.chips_tempo||[];
       }
     });
-    if(mudou||dias_sb.length>0){
-      var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
-      var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
-      if(diasM.length&&!DIA)selDia(diasM[diasM.length-1]);
-      else if(DIA)selDia(DIA);
+    // Sempre reconstruir navegação com dias do Supabase
+    var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
+    var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+    if(diasM.length){
+      var diaAlvo=DIA&&diasM.indexOf(DIA)>=0?DIA:diasM[diasM.length-1];
+      selDia(diaAlvo);
     }
   }).catch(function(e){console.warn('Load dias Supabase:',e);});
 });
