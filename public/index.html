@@ -1654,30 +1654,26 @@ function renderPeso(eq, ca){
 // carregar() só sob demanda
 
 window.addEventListener('load',function(){
-  loadLocal(); // restaurar dados do browser
+  loadLocal();
 
-  // Carregar dias do Supabase se não tiver localmente
-  var diasLocais=Object.keys(D);
-  if(diasLocais.length>0){
-    // Tem dados embutidos — navegar normalmente
-    var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
-    var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
-    if(dias.length)selDia(dias[dias.length-1]);
-  }
-  
-  // Sempre tentar carregar dias extras do Supabase (lançados via painel)
+  // 1. Renderizar com dados embutidos primeiro (instantâneo)
+  var meses=getMeses();
+  MES=meses[meses.length-1];
+  buildMesTabs();
+  buildDiaNav();
+  var dias=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+  if(dias.length) selDia(dias[dias.length-1]);
+
+  // 2. Buscar dias do Supabase e atualizar navegação
   fetch(SB_URL+'/rest/v1/pvr_dias?order=dia&select=dia,mes,km_plan,peso_plan_pv,has_prog,locked,lock_ts,obs_peso,obs_km,obs_tempo,chips_peso,chips_km,chips_tempo',{
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-  }).then(function(r){return r.json();}).then(function(dias_sb){
+  })
+  .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+  .then(function(dias_sb){
     if(!dias_sb||!dias_sb.length)return;
-    var mudou=false;
     dias_sb.forEach(function(d){
-      if(!D[d.dia]){
-        // Dia novo do Supabase — criar estrutura mínima
-        D[d.dia]={mes:d.mes,km_plan:d.km_plan||0,peso_plan_pv:d.peso_plan_pv||0,has_prog:d.has_prog||false,equipes:{}};
-        mudou=true;
-      }
-      if(!LD[d.dia])LD[d.dia]={c_p:[],c_k:[],c_t:[]};
+      if(!D[d.dia]) D[d.dia]={mes:d.mes,km_plan:+d.km_plan||0,peso_plan_pv:+d.peso_plan_pv||0,has_prog:d.has_prog||false,equipes:{}};
+      if(!LD[d.dia]) LD[d.dia]={c_p:[],c_k:[],c_t:[]};
       if(d.locked){
         LD[d.dia].locked=true;
         LD[d.dia].lock_ts=d.lock_ts||'';
@@ -1689,15 +1685,17 @@ window.addEventListener('load',function(){
         LD[d.dia].c_t=d.chips_tempo||[];
       }
     });
-    // Sempre reconstruir navegação com dias do Supabase
-    var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
-    var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
-    if(diasM.length){
-      var diaAlvo=DIA&&diasM.indexOf(DIA)>=0?DIA:diasM[diasM.length-1];
-      selDia(diaAlvo);
-    }
-  }).catch(function(e){console.warn('Load dias Supabase:',e);});
-});
+    // Reconstruir navegação com todos os dias
+    var meses2=getMeses();
+    MES=meses2[meses2.length-1];
+    buildMesTabs();
+    buildDiaNav();
+    // Selecionar o dia mais recente
+    var dias2=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+    if(dias2.length) selDia(dias2[dias2.length-1]);
+  })
+  .catch(function(e){console.warn('Supabase dias:',e);});
+});;
 
 </script>
 </body>
