@@ -446,6 +446,15 @@ async function sbLoadDia(dia) {
         h_ret_real: e.h_ret_real || '',
         ok:         e.ok || false
       };
+      // Popular D[dia].equipes se não existir (novo device sem dados locais)
+      if(!D[dia])D[dia]={mes:dia.substring(0,7),km_plan:d.km_plan||0,peso_plan_pv:d.peso_plan_pv||0,has_prog:true,equipes:{}};
+      if(!D[dia].equipes[e.motorista]){
+        D[dia].equipes[e.motorista]={
+          cargas:[],vdas:e.vdas||[],equipe:e.equipe||[e.motorista],
+          km_plan:e.km_plan||0,peso_plan:e.peso_plan||0,
+          h_saida_plan:e.h_saida_plan||'07:00'
+        };
+      }
     });
 
     cargas.forEach(function(c) {
@@ -459,6 +468,22 @@ async function sbLoadDia(dia) {
         cancelada:    c.cancelada || false,
         ok:           c.ok || false
       };
+      // Popular cargas no D[dia].equipes
+      if(D[dia]&&D[dia].equipes[c.motorista]){
+        var eq=D[dia].equipes[c.motorista];
+        var jaExiste=eq.cargas.find(function(x){return x.id===c.carga_id;});
+        if(!jaExiste){
+          eq.cargas.push({
+            id:c.carga_id,rota:c.rota||'',vda:c.vda||'',
+            km_plan:c.km_plan||0,peso_plan:c.peso_plan||0,
+            h_saida_plan:c.h_saida_plan||'07:00',
+            h_ret_plan:c.h_ret_plan||null,
+            h_saida_real:c.h_saida_real||null,
+            h_ret_real:c.h_ret_real||null,
+            tipo:c.tipo||'1carga'
+          });
+        }
+      }
     });
 
     // Restaurar LD
