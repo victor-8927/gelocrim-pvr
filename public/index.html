@@ -568,6 +568,7 @@ function renderKPIs(){
   Object.keys(eq).forEach(function(mot){
     var kmMot=0,hasKM=false;
     (eq[mot].cargas||[]).forEach(function(c){
+      if(c.tipo==='evento')return; // evento nao conta no KM
       var lc=(LC[DIA]||{})[c.id]||{};
       if(lc.cancelada){kmCan+=c.km_plan;return;}
       kmReplan+=c.km_plan;
@@ -590,12 +591,20 @@ function renderKPIs(){
   }
 
   // TEMPO
-  var nEq=Object.keys(eq).length;
+  // nEq conta apenas equipes com rotas (não só eventos)
+  var nEq=Object.keys(eq).filter(function(m){
+    return (eq[m].cargas||[]).some(function(c){return c.tipo!=='evento';});
+  }).length;
   var janMin=nEq*528,intMin=nEq*72,totMin=nEq*600;
   var realMin=0,nReg=0,nOkT=0,nOv=0;
   Object.keys(eq).forEach(function(mot){
+    // Equipes que só têm eventos não entram no cálculo de tempo
+    var cargas=eq[mot].cargas||[];
+    var temRotas=cargas.some(function(c){return c.tipo!=='evento';});
+    if(!temRotas)return;
     var hIni=hm2min(eq[mot].h_saida_plan||'07:00'),hRR=null,best=null;
-    (eq[mot].cargas||[]).forEach(function(c){
+    cargas.forEach(function(c){
+      if(c.tipo==='evento')return; // evento não tem retorno no mesmo dia
       var lc=(LC[DIA]||{})[c.id]||{};var ret=lc.h_ret_real||c.h_ret_real||null;
       if(ret){var t=hm2min(ret);if(!best||t>best){best=t;hRR=ret;}}
     });
@@ -707,7 +716,16 @@ function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok
 function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togCancel(cid){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].cancelada=!LC[DIA][cid].cancelada;if(LC[DIA][cid].cancelada){LC[DIA][cid].ok=false;if(!LC[DIA][cid].cancel_motivo)LC[DIA][cid].cancel_motivo='';}renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function setCancelMotivo(cid,m){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].cancel_motivo=LC[DIA][cid].cancel_motivo===m?'':m;renderEquipes();saveLocal();sbSaveDia(DIA);}
-function setCargaRet(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid][campo]=v;renderKPIs();renderEquipes();saveLocal();sbSaveDia(DIA);}
+function to24h(v){
+  if(!v)return v;
+  var m=v.match(/(\d+):(\d+)\s*(am|pm)/i);
+  if(!m)return v;
+  var h=+m[1],mn=m[2],ap=m[3].toLowerCase();
+  if(ap==='pm'&&h!==12)h+=12;
+  if(ap==='am'&&h===12)h=0;
+  return String(h).padStart(2,'0')+':'+mn;
+}
+function setCargaRet(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid][campo]=to24h(v);renderKPIs();renderEquipes();saveLocal();sbSaveDia(DIA);}
 function setCargaHod(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid][campo]=v;renderKPIs();renderEquipes();saveLocal();if(campo==='hod_ret')sbSaveDia(DIA);}
 function setPeso(id,v){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].peso_real=v;renderKPIs();saveLocal();}
 function encerrar(){
