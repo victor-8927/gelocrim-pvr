@@ -317,6 +317,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="dc"><div class="dl">Planejado PV</div><div class="dv" id="vpp" style="color:rgba(0,194,255,.7)">---<span class="du">kg</span></div><div class="ds">Programacao</div></div>
       <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vpr" style="color:var(--gr)">---<span class="du">kg</span></div><div class="ds" id="vpr-s">confirme abaixo</div></div>
     </div>
+    <div class="duo" style="margin-bottom:4px">
+      <div class="dc"><div class="dl" style="color:var(--am)">&#10005; Cancelado</div><div class="dv" id="vp-can" style="color:var(--am);font-size:16px">---<span class="du">kg</span></div></div>
+      <div class="dc"><div class="dl" style="color:var(--cy)">Replanejado</div><div class="dv" id="vp-rep" style="color:var(--cy);font-size:16px">---<span class="du">kg</span></div></div>
+    </div>
     <div class="bw"><div class="bt"><div class="bp" id="bpp" style="background:#00C2FF"></div><div class="br" id="bpr"></div></div>
     <div class="bm"><span id="lpp">plan.</span><span id="lpr" style="color:var(--gr)">real</span></div></div>
     <div id="bdg-p" style="margin-bottom:8px"></div>
@@ -653,6 +657,8 @@ function renderKPIs(){
     });
   });
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
+  if(pesoCan>0){setV('vp-can','-'+fN(pesoCan),'kg');setV('vp-rep',fN(pesoReplan),'kg');}
+  else{setV('vp-can','---','kg');setV('vp-rep','---','kg');}
   var txtP=nOk+'/'+tot+' conf.';
   if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
   document.getElementById('vpr-s').textContent=txtP;
@@ -687,6 +693,8 @@ function renderKPIs(){
   });
   kr=Math.round(kr*10)/10;
   setV('vkp',fN(kp,1),'km');setV('vkr',kr?fN(kr,1):'---','km');
+  if(kmCan>0){setV('vk-can','-'+fN(kmCan,1),'km');setV('vk-rep',fN(kmReplan,1),'km');}
+  else{setV('vk-can','---','km');setV('vk-rep','---','km');}
   document.getElementById('vkr-s').textContent=kr?nKM+' equipes':'lance hodometros';
   setBar('bkp','bkr','lkp','lkr',kp,kr,'#FF9A3C');setBdg('bdg-k',kp,kr,'km');
   var alEl=document.getElementById('km-alerts');
