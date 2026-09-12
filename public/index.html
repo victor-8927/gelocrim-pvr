@@ -264,17 +264,19 @@ tr:hover td{background:rgba(255,255,255,.015)}
   </div>
   <!-- TEMPO -->
   <div class="kc t">
-    <div class="kc-title">3 &#8212; Janela total (8h48 x equipes)</div>
-    <div class="tempo-info">07:00 &#8594; 17:00 &nbsp;|&nbsp; Atividade: <span id="vt-ativ" style="color:rgba(192,132,252,.8);font-weight:700">---</span> &nbsp;|&nbsp; Intervalo: <span id="vt-int" style="color:var(--tx3)">---</span> &nbsp;|&nbsp; Total: <span id="vt-tot" style="color:var(--tx2);font-weight:700">---</span></div>
-    <div class="duo">
-      <div class="dc"><div class="dl">Atividade planejada</div><div class="dv" id="vt-plan" style="color:rgba(192,132,252,.7)">---<span class="du">h</span></div><div class="ds" id="vt-plan-s">N equipes x 8h48</div></div>
-      <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vt-real" style="color:var(--rd)">---<span class="du">h</span></div><div class="ds" id="vt-real-s">soma equipes</div></div>
+    <div class="kc-title">3 &#8212; Tempo operacional</div>
+    <div class="tempo-info">07:00 &#8594; 17:00 &nbsp;|&nbsp; Operacao: <span id="vt-ativ" style="color:rgba(192,132,252,.8);font-weight:700">---</span> &nbsp;|&nbsp; Intervalo: <span id="vt-int" style="color:var(--tx3)">---</span> &nbsp;|&nbsp; Janela: <span id="vt-tot" style="color:var(--tx2);font-weight:700">---</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
+      <div class="dc-small"><div class="dl-small">Disponivel</div><div class="dv-small" id="vt-disp" style="color:var(--tx2)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-disp-s">equipes x 10h</div></div>
+      <div class="dc-small"><div class="dl-small">Planejado</div><div class="dv-small" id="vt-plan" style="color:rgba(192,132,252,.8)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-plan-s">Fusion</div></div>
+      <div class="dc-small"><div class="dl-small">Realizado</div><div class="dv-small" id="vt-real" style="color:var(--gr)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-real-s">atual</div></div>
     </div>
-    <div class="duo" style="margin-bottom:6px">
-      <div class="dc"><div class="dl">No horario (ate 17:00)</div><div class="dv" id="vt-ok" style="color:var(--gr);font-size:20px">---</div></div>
-      <div class="dc"><div class="dl">Tempo excedido</div><div class="dv" id="vt-ov" style="color:var(--rd);font-size:20px">---</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+      <div class="dc-small"><div class="dl-small" style="color:var(--am)">&#9650; Atrasos saida</div><div class="dv-small" id="vt-atraso" style="color:var(--am)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-atraso-s">soma equipes</div></div>
+      <div class="dc-small"><div class="dl-small" style="color:var(--rd)">&#9650; Excesso 17:00</div><div class="dv-small" id="vt-exc" style="color:var(--rd)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-exc-s">apos limite</div></div>
     </div>
     <div id="bdg-t" style="margin-bottom:6px"></div>
+    <div id="vt-analise" style="margin-bottom:6px"></div>
     <div class="motivo"><div class="ml">Motivo atraso saida</div><div class="chips" id="ch-t"></div><textarea class="mobs" id="obs-t" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
   </div>
 </div>
@@ -317,6 +319,17 @@ var SB_URL='https://wziprddrflgpzankofad.supabase.co';
 var SB_KEY='sb_publishable_h8o3BLGJUUcf8dVjdEY3kg_EhdmcC2o';
 var DIA=null,MES=null,LIMITE=1020;
 var D={},LE={},LC={},LD={};
+// Escala fixa Verão 2026 — dia da semana (0=Dom,1=Seg,...,6=Sab)
+var ESCALA={
+  '801':[1,2,3,4,5],    // Seg-Sex
+  '802':[1,2,3,4,5],    // Seg-Sex
+  '803':[1,2,3,5,6],    // Seg,Ter,Qua,Sex,Sab
+  '804':[1,3,4,5,6],    // Seg,Qua,Qui,Sex,Sab
+  '805':[1,2,3,4,5],    // Seg-Sex
+  '821':[1,2,3,4,5],    // Seg-Sex
+  '822':[1,2,3,5,6],    // Seg,Ter,Qua,Sex,Sab (JAVIER)
+  'APOIO':[2,3,4,5,6]   // Ter-Sab
+};
 var CANCEL_MOTIVOS=['Fora de horario','Carro com problema','Falta de equipe','Falta de produto','Carregamento atrasado','Cliente fechado','Outros'];
 var CHIPS_P=['Falta producao','Cliente fechado','Transito','Avaria produto','Recarga parcial','Evento extra','Outros'];
 var CHIPS_K=['Rota alternativa','Evento extra','Retorno consig.','Manutencao','Transito','Rio Preto Eva','Outros'];
@@ -591,36 +604,128 @@ function renderKPIs(){
   }
 
   // TEMPO
-  // nEq conta apenas equipes com rotas (não só eventos)
-  var nEq=Object.keys(eq).filter(function(m){
+  // KPI TEMPO — Quadro lógico completo
+  // Equipes de rota (excluir eventos/822/JAVIER sem retorno no dia)
+  var eqRotas=Object.keys(eq).filter(function(m){
     return (eq[m].cargas||[]).some(function(c){return c.tipo!=='evento';});
-  }).length;
-  var janMin=nEq*528,intMin=nEq*72,totMin=nEq*600;
-  var realMin=0,nReg=0,nOkT=0,nOv=0;
-  Object.keys(eq).forEach(function(mot){
-    // Equipes que só têm eventos não entram no cálculo de tempo
-    var cargas=eq[mot].cargas||[];
-    var temRotas=cargas.some(function(c){return c.tipo!=='evento';});
-    if(!temRotas)return;
-    var hIni=hm2min(eq[mot].h_saida_plan||'07:00'),hRR=null,best=null;
-    cargas.forEach(function(c){
-      if(c.tipo==='evento')return; // evento não tem retorno no mesmo dia
-      var lc=(LC[DIA]||{})[c.id]||{};var ret=lc.h_ret_real||c.h_ret_real||null;
-      if(ret){var t=hm2min(ret);if(!best||t>best){best=t;hRR=ret;}}
-    });
-    if(hRR){realMin+=hm2min(hRR)-hIni;nReg++;if(hm2min(hRR)<=LIMITE)nOkT++;else nOv++;}
   });
+  var nEq=eqRotas.length;
+
+  // CAMADA 1 — Disponível
+  var dispMin=nEq*600; // N equipes x 10h (8h48 + 1h12)
+  var opMin=nEq*528;   // N equipes x 8h48 operação
+  var intMin=nEq*72;   // N equipes x 1h12 intervalo
+
+  // CAMADA 2 — Planejado (Fusion: soma retorno_plan - saida_plan por equipe)
+  var planMin=0,nPlan=0;
+  eqRotas.forEach(function(mot){
+    var E=eq[mot];
+    var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    if(!cargas.length)return;
+    var hSP=hm2min(E.h_saida_plan||'07:00');
+    var hRPs=cargas.map(function(c){return c.h_ret_plan?hm2min(c.h_ret_plan):null;}).filter(Boolean);
+    if(hRPs.length){planMin+=Math.max.apply(null,hRPs)-hSP;nPlan++;}
+  });
+
+  // CAMADA 3 — Realizado + Atrasos + Excessos
+  var realMin=0,atrasosMin=0,excessoMin=0,nReg=0,nOkT=0,nOv=0;
+  var analise=[];
+  eqRotas.forEach(function(mot){
+    var E=eq[mot];
+    var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    var hSP=hm2min(E.h_saida_plan||'07:00');
+    // Saída real = menor saída real das cargas
+    var hSRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_saida_real||c.h_saida_real||null;}).filter(Boolean);
+    var hSR=hSRs.length?Math.min.apply(null,hSRs.map(hm2min)):null;
+    // Retorno real = maior retorno real das cargas
+    var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
+    var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
+    if(hRR===null)return;
+    // Tempo real = retorno real - saída planejada (base 07:00)
+    realMin+=hRR-hSP;nReg++;
+    if(hRR<=LIMITE)nOkT++;else nOv++;
+    // Atraso saída
+    var atraso=hSR!==null?Math.max(0,hSR-hSP):0;
+    atrasosMin+=atraso;
+    // Excesso após 17:00
+    var exc=Math.max(0,hRR-LIMITE);
+    excessoMin+=exc;
+    // Causa do excesso
+    var causa='',causaCls='dif-nd';
+    if(exc>0){
+      if(atraso>0&&atraso>=exc*0.7){causa='Atraso saída';causaCls='dif-warn';}
+      else if(atraso>0){causa='Atraso + ocorrência';causaCls='dif-bad';}
+      else{causa='Ocorrência na rua';causaCls='dif-bad';}
+    } else if(hSR!==null&&atraso>0){
+      causa='Recuperou na rua';causaCls='dif-ok';
+    } else {
+      causa='No horário';causaCls='dif-ok';
+    }
+    analise.push({mot:mot,atraso:atraso,exc:exc,causa:causa,causaCls:causaCls,hSR:hSR,hRR:hRR});
+  });
+
+  // Exibir CAMADA 1 — Disponível
   var ea=document.getElementById('vt-ativ'),ei=document.getElementById('vt-int'),et=document.getElementById('vt-tot');
-  if(ea)ea.textContent=min2hm(janMin);if(ei)ei.textContent=min2hm(intMin);if(et)et.textContent=min2hm(totMin);
-  setV('vt-plan',min2hm(janMin),'');document.getElementById('vt-plan-s').textContent=nEq+' equipes x 8h48';
-  setV('vt-real',nReg?min2hm(realMin):'---','');document.getElementById('vt-real-s').textContent=nReg+'/'+nEq+' equipes registradas';
-  document.getElementById('vt-ok').textContent=nReg?nOkT:'---';
-  document.getElementById('vt-ov').textContent=nReg?nOv:'---';
-  var difTempoMin=nReg===nEq?realMin-janMin:null;
+  if(ea)ea.textContent=min2hm(opMin);if(ei)ei.textContent=min2hm(intMin);if(et)et.textContent=min2hm(dispMin);
+  var elDisp=document.getElementById('vt-disp');
+  if(elDisp)elDisp.textContent=min2hm(dispMin);
+  var elDispS=document.getElementById('vt-disp-s');
+  if(elDispS)elDispS.textContent=nEq+' equipes x 10h';
+
+  // Exibir CAMADA 2 — Planejado
+  var elPlan=document.getElementById('vt-plan');
+  if(elPlan)elPlan.textContent=nPlan?min2hm(planMin):'---';
+  var elPlanS=document.getElementById('vt-plan-s');
+  if(elPlanS){
+    if(nPlan&&planMin>dispMin)elPlanS.innerHTML='<span class="dif-warn">+'+min2hm(planMin-dispMin)+' excesso plan.</span>';
+    else if(nPlan&&planMin<dispMin)elPlanS.innerHTML='<span class="dif-ok">'+min2hm(dispMin-planMin)+' folga plan.</span>';
+    else elPlanS.textContent='Fusion';
+  }
+
+  // Exibir CAMADA 3 — Realizado
+  var elReal=document.getElementById('vt-real');
+  if(elReal)elReal.textContent=nReg?min2hm(realMin):'---';
+  var elRealS=document.getElementById('vt-real-s');
+  if(elRealS)elRealS.textContent=nReg+'/'+nEq+' registradas';
+
+  // Exibir Atrasos e Excessos
+  var elAt=document.getElementById('vt-atraso'),elAtS=document.getElementById('vt-atraso-s');
+  var elEx=document.getElementById('vt-exc'),elExS=document.getElementById('vt-exc-s');
+  if(elAt)elAt.textContent=atrasosMin>0?min2hm(atrasosMin):'0h00';
+  if(elAtS)elAtS.textContent=analise.filter(function(a){return a.atraso>0;}).length+' equipe(s)';
+  if(elEx)elEx.textContent=excessoMin>0?min2hm(excessoMin):'0h00';
+  if(elExS)elExS.textContent=nOv+' equipe(s) apos 17:00';
+
+  // Badge comparativo
   var bt=document.getElementById('bdg-t');
-  if(!nReg)bt.innerHTML='<span class="badge b-nd">Lance os retornos</span>';
-  else if(nReg<nEq)bt.innerHTML='<span class="badge b-warn">'+nReg+'/'+nEq+' equipes &#8212; aguardando '+(nEq-nReg)+'</span>';
-  else{var cls2=difTempoMin>60?'b-bad':difTempoMin>0?'b-warn':'b-ok';bt.innerHTML='<span class="badge '+cls2+'">'+(difTempoMin>0?'&#9650; +':'&#9660; ')+min2hm(Math.abs(difTempoMin))+' vs '+min2hm(janMin)+' planejadas</span>';}
+  if(bt){
+    var hbt='';
+    if(!nReg)hbt='<span class="badge b-nd">Lance os retornos</span>';
+    else if(nReg<nEq)hbt='<span class="badge b-warn">'+nReg+'/'+nEq+' equipes — aguardando '+(nEq-nReg)+'</span>';
+    else{
+      var difReal=realMin-dispMin;
+      var clsR=difReal>60?'b-bad':difReal>0?'b-warn':'b-ok';
+      hbt='<span class="badge '+clsR+'">'+(difReal>0?'&#9650; +':'&#9660; ')+min2hm(Math.abs(difReal))+' vs disponivel</span>';
+      if(atrasosMin>0&&excessoMin>0){
+        var pctAtraso=Math.min(100,Math.round(atrasosMin/excessoMin*100));
+        hbt+=' <span class="badge b-warn">'+pctAtraso+'% do excesso = atraso saida</span>';
+      }
+    }
+    bt.innerHTML=hbt;
+  }
+
+  // Análise por equipe
+  var elAn=document.getElementById('vt-analise');
+  if(elAn&&analise.length){
+    var han='';
+    analise.filter(function(a){return a.exc>0||a.atraso>0;}).forEach(function(a){
+      han+='<div class="alrt km" style="margin-bottom:3px"><b>'+a.mot+'</b>';
+      if(a.atraso>0)han+=' — atraso saída: +'+min2hm(a.atraso);
+      if(a.exc>0)han+=' — excesso: +'+min2hm(a.exc);
+      han+=' <span class="'+a.causaCls+'">'+a.causa+'</span></div>';
+    });
+    elAn.innerHTML=han;
+  }
 
   // Encerrar btn
   var enc=document.getElementById('enc-btn');
