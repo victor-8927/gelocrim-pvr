@@ -661,7 +661,8 @@ function renderKPIs(){
     } else {
       causa='No horário';causaCls='dif-ok';
     }
-    analise.push({mot:mot,atraso:atraso,exc:exc,causa:causa,causaCls:causaCls,hSR:hSR,hRR:hRR});
+    var temInterior=(eq[mot].cargas||[]).some(function(c){return c.interior;});
+    analise.push({mot:mot,atraso:atraso,exc:exc,causa:causa,causaCls:causaCls,hSR:hSR,hRR:hRR,interior:temInterior});
   });
 
   // Exibir CAMADA 1 — Disponível
@@ -720,6 +721,7 @@ function renderKPIs(){
     var han='';
     analise.filter(function(a){return a.exc>0||a.atraso>0;}).forEach(function(a){
       han+='<div class="alrt km" style="margin-bottom:3px"><b>'+a.mot+'</b>';
+      if(a.interior)han+=' <span style="color:var(--am)">&#127758; Interior</span>';
       if(a.atraso>0)han+=' — atraso saída: +'+min2hm(a.atraso);
       if(a.exc>0)han+=' — excesso: +'+min2hm(a.exc);
       han+=' <span class="'+a.causaCls+'">'+a.causa+'</span></div>';
@@ -780,12 +782,19 @@ function renderEquipes(){
     (E.cargas||[]).forEach(function(c){
       var lc=(LC[DIA]||{})[c.id]||{},isCan=lc.cancelada||false,isRec=c.tipo==='recarga',hasFR=!!c.h_ret_real;
       html+='<div class="c-block'+(isCan?' cancelada':lc.ok?' ok':'')+(isRec?' rec':'')+'">';
-      html+='<div class="c-block-top"><div class="c-block-title"><span class="c-block-rota">'+c.rota+'</span><span class="c-block-id">'+c.id+'</span><span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'Recarga':'1a Carga')+'</span><span style="font-size:8px;color:var(--tx3)">VDA '+c.vda+(hasFR?' <span class="ftag f">F</span>':' <span class="ftag m">M</span>')+'</span></div>';
+      html+='<div class="c-block-top"><div class="c-block-title"><span class="c-block-rota">'+c.rota+'</span><span class="c-block-id">'+c.id+'</span>';
+      if(c.tipo==='evento')html+='<span class="c-block-tipo" style="background:rgba(192,132,252,.15);color:var(--pu)">&#11088; Evento</span>';
+      else html+='<span class="c-block-tipo '+(isRec?'r':'p')+'">'+(isRec?'Recarga':'1a Carga')+'</span>';
+      if(c.interior)html+='<span class="c-block-tipo" style="background:rgba(255,209,102,.15);color:var(--am)">&#127758; Interior</span>';
+      html+='<span style="font-size:8px;color:var(--tx3)">VDA '+c.vda+(hasFR?' <span class="ftag f">F</span>':' <span class="ftag m">M</span>')+'</span>';
+      if(c.obs&&c.tipo!=='evento')html+='<span style="font-size:8px;color:var(--tx3);font-style:italic">'+c.obs+'</span>';
+      html+='</div>';
       html+='<div style="display:flex;gap:5px">';
       if(isCan)html+='<span class="cancel-badge">CANCELADA</span>';
       html+='<button class="'+(isCan?'btn-uncancel':'btn-cancel')+'" onclick="togCancel(\''+c.id+'\')">'+(isCan?'Reativar':'Cancelar')+'</button>';
       html+='</div></div>';
       if(isCan){
+        if(c.obs)html+='<div style="font-size:9px;color:var(--pu);padding:4px 0;font-weight:600">&#11088; '+c.obs+'</div>';
         html+='<div class="cancel-motivos"><div class="cancel-motivos-title">Motivo do cancelamento</div><div class="cancel-chips">';
         var motAtual=lc.cancel_motivo||'';
         CANCEL_MOTIVOS.forEach(function(m){html+='<span class="cancel-chip'+(motAtual===m?' sel':'')+'" onclick="setCancelMotivo(\''+c.id+'\',\''+m+'\')">'+m+'</span>';});
@@ -869,7 +878,15 @@ function importFusion(inp){
         if(vda&&E.vdas.indexOf(vda)<0)E.vdas.push(vda);
         E.km_plan=Math.round((E.km_plan+km)*10)/10;E.peso_plan=Math.round((E.peso_plan+peso)*10)/10;
         Dd.km_plan=Math.round((Dd.km_plan+km)*10)/10;
-        E.cargas.push({id:cid,rota:String(row[6]||'').trim(),vda:vda,km_plan:km,peso_plan:Math.round(peso*10)/10,h_saida_plan:hSP,h_ret_plan:hRP,h_saida_real:hSR,h_ret_real:hRR,tipo:tipo});
+        // Capturar observação do Fusion
+        var obs='';
+        for(var oi=20;oi<row.length;oi++){if(row[oi]&&String(row[oi]).trim()){obs=String(row[oi]).trim();break;}}
+        // Detectar interior
+        var isInterior=false;
+        var obsUp=obs.toUpperCase();
+        ['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].forEach(function(kw){if(obsUp.indexOf(kw)>=0||String(row[6]||'').toUpperCase().indexOf(kw)>=0)isInterior=true;});
+        if(parseInt(String(row[6]||'').match(/\d+/))===811)isInterior=true;
+        E.cargas.push({id:cid,rota:String(row[6]||'').trim(),vda:vda,km_plan:km,peso_plan:Math.round(peso*10)/10,h_saida_plan:hSP,h_ret_plan:hRP,h_saida_real:hSR,h_ret_real:hRR,tipo:tipo,obs:obs,interior:isInterior});
         nCargas++;
       });
       Object.keys(diasImport).forEach(function(dia){D[dia]=diasImport[dia];if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};});
@@ -926,7 +943,9 @@ function importEnc(inp){
           var mot=ev.motorista||'EVENTO';
           if(!D[alvo].equipes[mot])D[alvo].equipes[mot]={cargas:[],vdas:[ev.vda],equipe:[mot],km_plan:0,peso_plan:ev.peso,h_saida_plan:'07:00'};
           var cargaId='ev_'+Math.random().toString(36).substr(2,8);
-          D[alvo].equipes[mot].cargas.push({id:cargaId,rota:ev.rota,vda:ev.vda,km_plan:0,peso_plan:ev.peso,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:'evento',obs:ev.obs,oc:ev.oc});
+          var evObs=ev.obs||'';
+          var evIsInt=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA'].some(function(kw){return evObs.toUpperCase().indexOf(kw)>=0;});
+          D[alvo].equipes[mot].cargas.push({id:cargaId,rota:ev.rota,vda:ev.vda,km_plan:0,peso_plan:ev.peso,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:'evento',obs:evObs,oc:ev.oc,interior:evIsInt});
         });;
       if(!D[alvo])D[alvo]={mes:alvo.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
       var totalRotas=totalPV+totalRec+totalBon;
