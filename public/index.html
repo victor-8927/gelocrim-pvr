@@ -928,7 +928,12 @@ function importEnc(inp){
       function qty(v){try{return v&&String(v).trim()&&String(v).trim()!=='0'?parseFloat(String(v).replace(',','.')):0;}catch(e){return 0;}}
       var totalPV=0,totalRec=0,totalBon=0,totalCon=0,totalEv=0;
               var eventos=[];
-        var ordemEnc=0;
+        // Garantir que D[alvo] existe antes do loop
+        if(!D[alvo])D[alvo]={mes:alvo.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
+        if(!LE[alvo])LE[alvo]={};
+        if(!LC[alvo])LC[alvo]={};
+        if(!LD[alvo])LD[alvo]={c_p:[],c_k:[],c_t:[]};
+        var ordemEnc=Object.keys(D[alvo].equipes).length;
         rows.slice(hdr+1).forEach(function(row){
           var rota=String(row[0]||'').trim();
           var vda=String(row[1]||'').trim();
@@ -966,7 +971,6 @@ function importEnc(inp){
           var evIsInt=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA'].some(function(kw){return evObs.toUpperCase().indexOf(kw)>=0;});
           D[alvo].equipes[mot].cargas.push({id:cargaId,rota:ev.rota,vda:ev.vda,km_plan:0,peso_plan:ev.peso,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:'evento',obs:evObs,oc:ev.oc,interior:evIsInt});
         });;
-      if(!D[alvo])D[alvo]={mes:alvo.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:false,equipes:{}};
       var totalRotas=totalPV+totalRec+totalBon;
       var totalGeral=totalRotas+totalCon+totalEv;
       D[alvo].peso_plan_pv=totalGeral;
