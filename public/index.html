@@ -559,13 +559,22 @@ function renderKPIs(){
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
   var txtP=nOk+'/'+tot+' conf.';if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
   document.getElementById('vpr-s').textContent=txtP;
-  // Rotas vs Eventos
-  var pesoRotas=d.peso_rotas||0,pesoEv=d.peso_eventos||0;
-  if(pesoRotas||pesoEv){
-    var elR=document.getElementById('vp-rotas'),elE=document.getElementById('vp-eventos');
-    if(elR)elR.innerHTML=fN(pesoRotas)+'<span style="font-size:9px"> kg</span>';
-    if(elE)elE.innerHTML=fN(pesoEv)+'<span style="font-size:9px"> kg</span>';
-  }
+  // Rotas vs Eventos — calcular em tempo real das cargas (excluindo canceladas)
+  var pesoRotasCalc=0,pesoEvCalc=0;
+  Object.values(eq).forEach(function(E){
+    (E.cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      if(lc.cancelada)return;
+      if(c.tipo==='evento')pesoEvCalc+=c.peso_plan;
+      else pesoRotasCalc+=c.peso_plan;
+    });
+  });
+  // Usar calculado se disponível, senão usar do D[dia]
+  var pesoRotas=pesoRotasCalc||d.peso_rotas||0;
+  var pesoEv=pesoEvCalc||d.peso_eventos||0;
+  var elR=document.getElementById('vp-rotas'),elE=document.getElementById('vp-eventos');
+  if(elR)elR.innerHTML=(pesoRotas?fN(pesoRotas):'---')+'<span style="font-size:9px"> kg</span>';
+  if(elE)elE.innerHTML=(pesoEv?fN(pesoEv):'---')+'<span style="font-size:9px"> kg</span>';
   if(pesoCan>0){setV('vp-can','-'+fN(pesoCan),'kg');setV('vp-rep',fN(pesoReplan),'kg');}
   else{document.getElementById('vp-can').innerHTML='---<span class="du">kg</span>';document.getElementById('vp-rep').innerHTML='---<span class="du">kg</span>';}
   setBar('bpp','bpr','lpp','lpr',pesoReplan||pp,pr,'#4DFFC3');
