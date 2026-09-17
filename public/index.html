@@ -326,15 +326,37 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <!-- EXECUTIVO -->
 <div id="page-exec" style="display:none">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-    <div class="kc p" style="text-align:center;padding:20px">
-      <div class="kc-title">Peso entregue</div>
-      <div class="dv" id="ex-peso" style="font-size:36px;color:var(--gr)">---<span class="du">kg</span></div>
-      <div id="ex-peso-pct" style="font-size:11px;margin-top:4px"></div>
+    <div class="kc p" style="padding:16px">
+      <div class="kc-title" style="margin-bottom:10px">&#128230; Peso distribuido</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:center">
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Planejado</div>
+          <div id="ex-peso-plan" style="font-size:18px;font-weight:800;font-family:var(--mo);color:rgba(0,194,255,.7)">---</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">PV encerramento</div>
+        </div>
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Realizado</div>
+          <div id="ex-peso" style="font-size:18px;font-weight:800;font-family:var(--mo);color:var(--gr)">---</div>
+          <div id="ex-peso-pct" style="font-size:8px;margin-top:2px"></div>
+        </div>
+      </div>
+      <div id="ex-peso-can" style="font-size:9px;margin-top:6px;text-align:center"></div>
     </div>
-    <div class="kc k" style="text-align:center;padding:20px">
-      <div class="kc-title">KM rodado</div>
-      <div class="dv" id="ex-km" style="font-size:36px;color:var(--am)">---<span class="du">km</span></div>
-      <div id="ex-km-pct" style="font-size:11px;margin-top:4px"></div>
+    <div class="kc k" style="padding:16px">
+      <div class="kc-title" style="margin-bottom:10px">&#128664; KM percorrido</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:center">
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Planejado</div>
+          <div id="ex-km-plan" style="font-size:18px;font-weight:800;font-family:var(--mo);color:rgba(255,209,102,.7)">---</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Fusion</div>
+        </div>
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Realizado</div>
+          <div id="ex-km" style="font-size:18px;font-weight:800;font-family:var(--mo);color:var(--am)">---</div>
+          <div id="ex-km-pct" style="font-size:8px;margin-top:2px"></div>
+        </div>
+      </div>
+      <div id="ex-km-can" style="font-size:9px;margin-top:6px;text-align:center"></div>
     </div>
     <div class="kc t" style="padding:16px">
       <div class="kc-title" style="margin-bottom:10px">&#9201; Tempo operacional</div>
@@ -1230,14 +1252,23 @@ function renderExec(){
   var pp=d.peso_plan_pv||0,pr=0,pesoCan=0;
   Object.values(eq).forEach(function(E){E.cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);});});
   var pctP=pp>0?Math.round(pr/pp*100):0;
-  document.getElementById('ex-peso').innerHTML=fN(pr)+'<span class="du">kg</span>';
-  document.getElementById('ex-peso-pct').innerHTML='<span class="badge '+(pctP>=95?'b-ok':pctP>=80?'b-warn':'b-bad')+'">'+pctP+'% do planejado</span>';
+  var elPP=document.getElementById('ex-peso-plan');
+  if(elPP)elPP.innerHTML=fN(pp)+'<span style="font-size:10px"> kg</span>';
+  document.getElementById('ex-peso').innerHTML=fN(pr)+'<span style="font-size:10px"> kg</span>';
+  document.getElementById('ex-peso-pct').innerHTML='<span class="badge '+(pctP>=95?'b-ok':pctP>=80?'b-warn':'b-bad')+'">'+pctP+'%</span>';
+  var elPC=document.getElementById('ex-peso-can');
+  if(elPC)elPC.innerHTML=pesoCan>0?'<span class="badge b-warn">❌ Cancelado: -'+fN(pesoCan)+' kg</span>':'';
   // KM
-  var kp=d.km_plan||0,kr=0;
-  Object.keys(eq).forEach(function(mot){(eq[mot].cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(c.tipo==='evento'||lc.cancelada)return;if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
+  var kp=d.km_plan||0,kr=0,kmCan=0;
+  Object.keys(eq).forEach(function(mot){(eq[mot].cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(c.tipo==='evento')return;if(lc.cancelada){kmCan+=c.km_plan;return;}if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
   var pctK=kp>0?Math.round(kr/kp*100):0;
-  document.getElementById('ex-km').innerHTML=fN(kr,1)+'<span class="du">km</span>';
-  document.getElementById('ex-km-pct').innerHTML='<span class="badge '+(pctK<=110?'b-ok':pctK<=125?'b-warn':'b-bad')+'">'+(kr>kp?'+':'')+fN(Math.round(kr-kp),1)+' km vs plano</span>';
+  var elKP=document.getElementById('ex-km-plan');
+  if(elKP)elKP.innerHTML=fN(kp,1)+'<span style="font-size:10px"> km</span>';
+  document.getElementById('ex-km').innerHTML=fN(kr,1)+'<span style="font-size:10px"> km</span>';
+  var difKM=Math.round(kr-kp);
+  document.getElementById('ex-km-pct').innerHTML=kr?'<span class="badge '+(Math.abs(difKM)<=kp*0.1?'b-ok':Math.abs(difKM)<=kp*0.2?'b-warn':'b-bad')+'">'+(difKM>0?'+':'')+fN(difKM,1)+' km</span>':'';
+  var elKC=document.getElementById('ex-km-can');
+  if(elKC)elKC.innerHTML=kmCan>0?'<span class="badge b-warn">❌ Cancelado: -'+fN(kmCan,1)+' km</span>':'';
   // Tempo — Disponível / Planejado / Realizado
   var nOk=0,nOv=0,nEq=0,planMinEx=0,nPlanEx=0,realMinEx=0,nRegEx=0;
   Object.keys(eq).forEach(function(mot){
