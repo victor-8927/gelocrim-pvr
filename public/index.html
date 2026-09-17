@@ -1059,7 +1059,7 @@ function renderEquipes(){
       }else{
         var kmR=null;if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmR=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
         var kmDif=kmR!==null?Math.round((kmR-c.km_plan)*10)/10:null;
-        var hSP=c.h_saida_plan,hRP=c.h_ret_plan;
+        var hSP=c.h_saida_plan,hRP=(c.h_ret_plan&&c.h_ret_plan>c.h_saida_plan)?c.h_ret_plan:null;
         var hSR=lc.h_saida_real||c.h_saida_real||null,hRR=lc.h_ret_real||c.h_ret_real||null;
         var tPlanM=hSP&&hRP?hm2min(hRP)-hm2min(hSP):null,tRealM=hSR&&hRR?hm2min(hRR)-hm2min(hSR):null;
         var atSM=hSR?hm2min(hSR)-hm2min(hSP):null,atRM=hRR&&hRP?hm2min(hRR)-hm2min(hRP):null,tDif=tRealM!==null&&tPlanM!==null?tRealM-tPlanM:null;
