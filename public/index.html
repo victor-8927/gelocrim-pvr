@@ -172,6 +172,24 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
 .btn-eq{padding:8px 18px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--b);background:var(--s1);color:var(--tx2);font-family:var(--ff)}
 .btn-eq.done{background:var(--grd);color:var(--gr);border-color:rgba(77,255,195,.3)}
 .nodata{text-align:center;padding:30px;color:var(--tx3);font-size:12px}
+.port-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+.port-modal.open{display:flex}
+.port-box{background:#0D2A3A;border:1px solid var(--b);border-radius:14px;padding:20px;width:min(700px,96vw);max-height:90vh;overflow-y:auto}
+.port-title{font-size:13px;font-weight:700;color:var(--pu);margin-bottom:4px}
+.port-sub{font-size:10px;color:var(--tx3);margin-bottom:14px}
+.port-table{width:100%;border-collapse:collapse;margin-bottom:12px}
+.port-table th{font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);padding:5px 6px;border-bottom:1px solid var(--b);text-align:left;font-weight:600}
+.port-table td{padding:4px 3px}
+.port-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--b);border-radius:5px;color:var(--tx);font-size:10px;font-family:var(--mo);padding:4px 6px;text-align:center}
+.port-inp:focus{outline:none;border-color:var(--pu);background:rgba(192,132,252,.08)}
+.port-inp.ok{border-color:rgba(77,255,195,.4);color:var(--gr)}
+.port-inp.err{border-color:rgba(255,128,144,.4);color:var(--rd)}
+.port-row-info{font-size:9px;color:var(--tx3);padding:2px 6px}
+.port-actions{display:flex;gap:8px;justify-content:flex-end}
+.port-btn{padding:8px 18px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:var(--ff)}
+.port-btn.apply{background:linear-gradient(135deg,rgba(192,132,252,.3),rgba(0,194,255,.3));color:var(--tx);border:1px solid rgba(192,132,252,.3)}
+.port-btn.cancel{background:var(--s1);color:var(--tx3);border:1px solid var(--b)}
+.port-result{font-size:10px;margin-top:8px;padding:8px;border-radius:7px}
 .enc-btn{width:100%;padding:12px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:var(--ff);background:linear-gradient(135deg,rgba(77,255,195,.15),rgba(0,194,255,.15));color:var(--gr);border:1px solid rgba(77,255,195,.2);margin-top:8px}
 .enc-btn:disabled{opacity:.5;cursor:not-allowed}
 .footer{text-align:center;padding:10px 0 4px;font-size:8px;color:var(--tx3);border-top:1px solid var(--b);margin-top:10px}
@@ -233,6 +251,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="imp-btn" id="dz-e" onclick="document.getElementById('inp-e').click()">
     <span class="ic">&#128203;</span>
     <div><div>Encerramento .xlsx</div><div class="imp-st" id="st-e">arraste ou clique</div></div>
+  </div>
+  <div class="imp-btn" id="dz-port" onclick="abrirPortaria()" style="border-color:rgba(192,132,252,.3)">
+    <span class="ic">&#128203;</span>
+    <div><div style="color:var(--pu)">Portaria</div><div class="imp-st" id="st-port">hodometros e horarios reais</div></div>
   </div>
   <div class="exp-btn" onclick="exportar()">&#128190; Exportar</div>
 </div>
@@ -467,6 +489,34 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div id="anal-rota" style="display:none"></div>
   <div id="anal-motorista" style="display:none"></div>
   <div id="anal-padroes" style="display:none"></div>
+</div>
+
+<!-- MODAL PORTARIA -->
+<div class="port-modal" id="port-modal">
+  <div class="port-box">
+    <div class="port-title">&#128203; Dados da Portaria</div>
+    <div class="port-sub">Digite os dados do controle de cinta de carga. O sistema cruza pelo romaneio e preenche hodômetros e horários automaticamente.</div>
+    <div id="port-status" style="font-size:10px;color:var(--tx3);margin-bottom:8px"></div>
+    <table class="port-table">
+      <thead>
+        <tr>
+          <th>Romaneio</th>
+          <th>Motorista</th>
+          <th>VDA/Placa</th>
+          <th>KM Saída</th>
+          <th>KM Retorno</th>
+          <th>H. Saída</th>
+          <th>H. Retorno</th>
+        </tr>
+      </thead>
+      <tbody id="port-tbody"></tbody>
+    </table>
+    <div class="port-actions">
+      <button class="port-btn cancel" onclick="fecharPortaria()">Cancelar</button>
+      <button class="port-btn apply" onclick="aplicarPortaria()">&#9989; Aplicar dados</button>
+    </div>
+    <div id="port-result" class="port-result" style="display:none"></div>
+  </div>
 </div>
 
 <div class="footer">Gelocrim Industria de Gelo Ltda &#183; Manaus-AM &#183; PVR &#183; Limite 17:00 &#183; Alerta KM &gt;5km</div>
@@ -1299,6 +1349,127 @@ function importEnc(inp){
     inp.value='';
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ── PORTARIA ──
+function abrirPortaria(){
+  if(!DIA||!D[DIA]){alert('Selecione um dia primeiro');return;}
+  var eq=D[DIA].equipes||{};
+  var linhas=[];
+  // Listar todas as cargas do dia com romaneio
+  Object.keys(eq).forEach(function(mot){
+    (eq[mot].cargas||[]).forEach(function(c){
+      if(c.tipo==='evento')return;
+      linhas.push({id:c.id,rota:c.rota,mot:mot,vda:c.vda||''});
+    });
+  });
+  // Ordenar por hora saída planejada
+  linhas.sort(function(a,b){
+    var A=D[DIA].equipes[a.mot],B=D[DIA].equipes[b.mot];
+    return (a.h_saida_plan||'').localeCompare(b.h_saida_plan||'');
+  });
+  var tbody=document.getElementById('port-tbody');
+  tbody.innerHTML='';
+  // Adicionar linhas existentes + linhas extras vazias
+  var todasLinhas=linhas.concat([{id:'',rota:'',mot:'',vda:''},{id:'',rota:'',mot:'',vda:''}]);
+  todasLinhas.forEach(function(c,i){
+    var lc=c.id?(LC[DIA]||{})[c.id]||{}:{};
+    var tr=document.createElement('tr');
+    tr.innerHTML=
+      '<td><input class="port-inp" placeholder="Romaneio" value="'+( c.id||'')+'" id="pr_rom_'+i+'" onchange="portCruzar('+i+')"></td>'+
+      '<td><div class="port-row-info" id="pr_mot_'+i+'">'+( c.mot||'')+'</div></td>'+
+      '<td><input class="port-inp" placeholder="VDA" value="'+(lc.vda_real||c.vda||'')+'" id="pr_vda_'+i+'"></td>'+
+      '<td><input class="port-inp" placeholder="KM ini" value="'+(lc.hod_ini||'')+'" id="pr_ini_'+i+'"></td>'+
+      '<td><input class="port-inp" placeholder="KM ret" value="'+(lc.hod_ret||'')+'" id="pr_ret_'+i+'"></td>'+
+      '<td><input class="port-inp" type="time" value="'+(lc.h_saida_real||'')+'" id="pr_hs_'+i+'"></td>'+
+      '<td><input class="port-inp" type="time" value="'+(lc.h_ret_real||'')+'" id="pr_hr_'+i+'"></td>';
+    tbody.appendChild(tr);
+  });
+  document.getElementById('port-status').textContent=linhas.length+' cargas encontradas para '+DIA;
+  document.getElementById('port-result').style.display='none';
+  document.getElementById('port-modal').classList.add('open');
+}
+
+function portCruzar(i){
+  // Quando digita romaneio, buscar a carga correspondente
+  var rom=document.getElementById('pr_rom_'+i);
+  if(!rom)return;
+  var val=rom.value.trim();
+  if(!val)return;
+  var eq=D[DIA].equipes||{};
+  var encontrado=null;
+  Object.keys(eq).forEach(function(mot){
+    (eq[mot].cargas||[]).forEach(function(c){
+      if(String(c.id)===val)encontrado={c:c,mot:mot};
+    });
+  });
+  var motEl=document.getElementById('pr_mot_'+i);
+  if(encontrado){
+    rom.classList.add('ok');rom.classList.remove('err');
+    if(motEl)motEl.textContent=encontrado.mot+' — '+encontrado.c.rota;
+    // Preencher VDA se vazio
+    var vdaEl=document.getElementById('pr_vda_'+i);
+    if(vdaEl&&!vdaEl.value)vdaEl.value=encontrado.c.vda||'';
+  } else {
+    rom.classList.add('err');rom.classList.remove('ok');
+    if(motEl)motEl.textContent='Romaneio não encontrado';
+  }
+}
+
+function aplicarPortaria(){
+  if(!DIA)return;
+  var tbody=document.getElementById('port-tbody');
+  var rows=tbody.querySelectorAll('tr');
+  var aplicados=0,erros=[];
+  rows.forEach(function(tr,i){
+    var rom=(document.getElementById('pr_rom_'+i)||{}).value||'';
+    if(!rom.trim())return;
+    var ini=(document.getElementById('pr_ini_'+i)||{}).value||'';
+    var ret=(document.getElementById('pr_ret_'+i)||{}).value||'';
+    var hs=(document.getElementById('pr_hs_'+i)||{}).value||'';
+    var hr=(document.getElementById('pr_hr_'+i)||{}).value||'';
+    var vda=(document.getElementById('pr_vda_'+i)||{}).value||'';
+    // Buscar carga pelo romaneio
+    var eq=D[DIA].equipes||{};
+    var encontrado=null;
+    Object.keys(eq).forEach(function(mot){
+      (eq[mot].cargas||[]).forEach(function(c){
+        if(String(c.id)===rom.trim())encontrado={c:c,mot:mot};
+      });
+    });
+    if(!encontrado){erros.push('Romaneio '+rom+' não encontrado');return;}
+    var cid=encontrado.c.id;
+    if(!LC[DIA][cid])LC[DIA][cid]={};
+    if(ini)LC[DIA][cid].hod_ini=+ini;
+    if(ret)LC[DIA][cid].hod_ret=+ret;
+    if(hs)LC[DIA][cid].h_saida_real=hs;
+    if(hr)LC[DIA][cid].h_ret_real=hr;
+    // Atualizar VDA na carga e equipe
+    if(vda){
+      encontrado.c.vda=vda;
+      var E=D[DIA].equipes[encontrado.mot];
+      if(E&&E.vdas.indexOf(vda)<0)E.vdas.push(vda);
+    }
+    aplicados++;
+  });
+  saveLocal();
+  sbSaveDia(DIA);
+  renderKPIs();
+  renderEquipes();
+  var res=document.getElementById('port-result');
+  res.style.display='block';
+  if(aplicados>0){
+    res.style.background='var(--grd)';res.style.color='var(--gr)';
+    res.textContent='✅ '+aplicados+' cargas atualizadas com dados da portaria'+(erros.length?' | ⚠️ '+erros.join(', '):'');
+  } else {
+    res.style.background='var(--rdd)';res.style.color='var(--rd)';
+    res.textContent='❌ Nenhuma carga aplicada. '+erros.join(', ');
+  }
+  setTimeout(function(){fecharPortaria();},2000);
+}
+
+function fecharPortaria(){
+  document.getElementById('port-modal').classList.remove('open');
 }
 
 function exportar(){
