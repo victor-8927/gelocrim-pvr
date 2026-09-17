@@ -1102,13 +1102,25 @@ function togMotivoCarga(cid,tipo,m){
 function renderMotivoInline(cid,tipo,arr){
   var mot=getMotivosCarga(cid);
   var sel=mot[tipo]||'';
-  var html='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">';
+  var parts=['<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">'];
   arr.forEach(function(m){
-    html+='<span style="padding:2px 7px;border-radius:4px;font-size:8px;font-weight:600;cursor:pointer;border:1px solid '+(sel===m?'var(--cy)':'rgba(255,255,255,.12)')+';background:'+(sel===m?'rgba(0,194,255,.15)':'rgba(255,255,255,.04)')+';color:'+(sel===m?'var(--cy)':'var(--tx3)')+'" onclick="togMotivoCarga(''+cid+'',''+tipo+'',''+m+'')">'+m+'</span>';
+    var ativo=sel===m;
+    var cor=ativo?'var(--cy)':'var(--tx3)';
+    var bg=ativo?'rgba(0,194,255,.15)':'rgba(255,255,255,.04)';
+    var bd=ativo?'var(--cy)':'rgba(255,255,255,.12)';
+    var stl='padding:2px 7px;border-radius:4px;font-size:8px;font-weight:600;cursor:pointer;border:1px solid '+bd+';background:'+bg+';color:'+cor;
+    var mc=m.replace(/[^\w\s\-]/g,'_');
+    var cc=cid.replace(/'/g,"\'");
+    var tc=tipo.replace(/'/g,"\'");
+    var spanEl='<span style="'+stl+'" data-cid="'+cid+'" data-tipo="'+tipo+'" data-m="'+mc+'" onclick="togMotivoCarga(this.dataset.cid,this.dataset.tipo,this.dataset.m)">'+m+'</span>';
+    parts.push(spanEl);
   });
-  html+='</div>';
-  if(sel==='Outros'){html+='<input type="text" style="width:100%;margin-top:3px;background:rgba(255,255,255,.05);border:1px solid var(--b);border-radius:4px;color:var(--tx);font-size:9px;padding:3px 6px" placeholder="Descreva o motivo..." value="'+(mot[tipo+'_obs']||'')+'" onchange="setMotivoObs(''+cid+'',''+tipo+'_obs',this.value)">';}
-  return html;
+  parts.push('</div>');
+  if(sel==='Outros'){
+    var obsVal=(mot[tipo+'_obs']||'').replace(/"/g,'&quot;');
+    parts.push('<input type="text" style="width:100%;margin-top:3px;background:rgba(255,255,255,.05);border:1px solid var(--b);border-radius:4px;color:var(--tx);font-size:9px;padding:3px 6px" placeholder="Descreva o motivo..." value="'+obsVal+'" data-cid="'+cid+'" data-tipo="'+tipo+'_obs" onchange="setMotivoObs(this.dataset.cid,this.dataset.tipo,this.value)">');
+  }
+  return parts.join('');
 }
 function setMotivoObs(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};if(!LC[DIA][cid].motivos)LC[DIA][cid].motivos={};LC[DIA][cid].motivos[campo]=v;saveLocal();}
 function setObsCarga(cid,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].obs_carga=v;saveLocal();}
