@@ -510,11 +510,30 @@ async function sbSaveDia(dia){
     }]);
     for(var i=0;i<eqs.length;i++){
       var mot=eqs[i],E=d.equipes[mot],le=(LE[dia]||{})[mot]||{};
+      // Calcular km_real, h_saida_real e h_ret_real agregados das cargas
+      var kmRealCalc=0,hSaidaRealCalc=null,hRetRealCalc=null;
+      (E.cargas||[]).forEach(function(c){
+        if(c.tipo==='evento')return;
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.cancelada)return;
+        // KM real por hodômetro
+        if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)
+          kmRealCalc+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;
+        // Saída real — menor
+        var hSR=lc.h_saida_real||c.h_saida_real||null;
+        if(hSR){if(!hSaidaRealCalc||hSR<hSaidaRealCalc)hSaidaRealCalc=hSR;}
+        // Retorno real — maior
+        var hRR=lc.h_ret_real||c.h_ret_real||null;
+        if(hRR){if(!hRetRealCalc||hRR>hRetRealCalc)hRetRealCalc=hRR;}
+      });
       await sbFetch('POST','/rest/v1/pvr_equipes?on_conflict=dia,motorista',[{
         dia:dia,motorista:mot,vdas:E.vdas||[],equipe:E.equipe||[mot],
         km_plan:E.km_plan||0,peso_plan:E.peso_plan||0,h_saida_plan:E.h_saida_plan||'07:00',
         hod_ini:le.hod_ini?+le.hod_ini:null,hod_ret:le.hod_ret?+le.hod_ret:null,
-        km_real:le.km_real||null,h_ret_real:le.h_ret_real||null,ok:le.ok||false,
+        km_real:kmRealCalc||le.km_real||null,
+        h_saida_real:hSaidaRealCalc||le.h_saida_real||null,
+        h_ret_real:hRetRealCalc||le.h_ret_real||null,
+        ok:le.ok||false,
         updated_at:new Date().toISOString()
       }]);
     }
