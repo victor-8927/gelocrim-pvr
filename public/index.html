@@ -1328,7 +1328,24 @@ function renderGer(){
   // PVR
   var pp=d.peso_plan_pv||0,pr=0,pesoCan=0,kp=d.km_plan||0,kr=0;
   Object.values(eq).forEach(function(E){E.cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);if(c.tipo!=='evento'&&lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
-  document.getElementById('ger-pvr').innerHTML='<div>&#9992; Peso planejado: <b>'+fN(pp)+' kg</b> → realizado: <b style="color:var(--gr)">'+fN(pr)+' kg</b> ('+Math.round(pr/pp*100)+'%)</div><div>&#128666; KM planejado: <b>'+fN(kp,1)+' km</b> → real: <b style="color:'+(kr>kp*1.1?'var(--am)':'var(--gr)')+'">'+fN(kr,1)+' km</b></div>'+(pesoCan?'<div>❌ Cancelado: <b style="color:var(--rd)">'+fN(pesoCan)+' kg</b></div>':'');
+  // Calcular tempo para gerência
+  var nEqG=0,planMinG=0,realMinG=0,nPlanG=0,nRegG=0;
+  Object.keys(eq).forEach(function(mot){
+    var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    if(!cargas.length)return;nEqG++;
+    var hSP=hm2min(eq[mot].h_saida_plan||'07:00');
+    var hRPs=cargas.map(function(c){return c.h_ret_plan?hm2min(c.h_ret_plan):null;}).filter(Boolean);
+    if(hRPs.length){planMinG+=Math.max.apply(null,hRPs)-hSP;nPlanG++;}
+    var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
+    var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
+    if(hRR){realMinG+=hRR-hSP;nRegG++;}
+  });
+  var dispMinG=nEqG*600;
+  var difTempoG=realMinG-dispMinG;
+  document.getElementById('ger-pvr').innerHTML=
+    '<div style="margin-bottom:6px">&#128230; Peso: <b style="color:rgba(0,194,255,.7)">'+fN(pp)+' kg</b> plan. → <b style="color:var(--gr)">'+fN(pr)+' kg</b> real <span class="badge '+(Math.round(pr/pp*100)>=95?'b-ok':Math.round(pr/pp*100)>=80?'b-warn':'b-bad')+'">'+Math.round(pr/pp*100)+'%</span>'+(pesoCan?'  <span class="badge b-warn">❌ -'+fN(pesoCan)+' kg canc.</span>':'')+'</div>'+
+    '<div style="margin-bottom:6px">&#128664; KM: <b style="color:rgba(255,209,102,.7)">'+fN(kp,1)+' km</b> plan. → <b style="color:'+(kr>kp*1.1?'var(--am)':'var(--gr)')+'">'+fN(kr,1)+' km</b> real <span class="badge '+(Math.abs(kr-kp)<=kp*0.1?'b-ok':Math.abs(kr-kp)<=kp*0.2?'b-warn':'b-bad')+'">'+(kr>kp?'+':'')+fN(Math.round(kr-kp),1)+' km</span></div>'+
+    '<div>&#9201; Tempo: <b style="color:rgba(192,132,252,.7)">'+min2hm(dispMinG)+'</b> disp. → <b style="color:rgba(192,132,252,.9)">'+( nPlanG?min2hm(planMinG):'---')+'</b> plan. → <b style="color:'+(difTempoG>0?'var(--rd)':'var(--gr)')+'">'+( nRegG?min2hm(realMinG):'---')+'</b> real <span class="badge '+(difTempoG<=0?'b-ok':difTempoG<=60?'b-warn':'b-bad')+'">'+(nRegG?(difTempoG>0?'+'+min2hm(difTempoG)+' excesso':min2hm(Math.abs(difTempoG))+' folga'):'aguardando')+'</span></div>';
   // Equipes
   var eqHtml='<table style="width:100%;font-size:9px;border-collapse:collapse"><tr style="color:var(--tx3)"><th style="text-align:left;padding:4px">Equipe</th><th style="text-align:right;padding:4px">Saída</th><th style="text-align:right;padding:4px">Retorno</th><th style="text-align:right;padding:4px">Atraso</th><th style="text-align:right;padding:4px">Excesso</th><th style="text-align:right;padding:4px">Motivo</th></tr>';
   Object.keys(eq).forEach(function(mot){
