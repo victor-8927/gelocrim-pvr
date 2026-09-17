@@ -336,10 +336,27 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="dv" id="ex-km" style="font-size:36px;color:var(--am)">---<span class="du">km</span></div>
       <div id="ex-km-pct" style="font-size:11px;margin-top:4px"></div>
     </div>
-    <div class="kc t" style="text-align:center;padding:20px">
-      <div class="kc-title">No horário</div>
-      <div class="dv" id="ex-tempo" style="font-size:36px;color:var(--pu)">---</div>
-      <div id="ex-tempo-s" style="font-size:11px;margin-top:4px;color:var(--tx3)">equipes até 17:00</div>
+    <div class="kc t" style="padding:16px">
+      <div class="kc-title" style="margin-bottom:10px">&#9201; Tempo operacional</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center">
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Disponível</div>
+          <div id="ex-t-disp" style="font-size:18px;font-weight:800;font-family:var(--mo);color:var(--tx2)">---</div>
+          <div id="ex-t-disp-s" style="font-size:8px;color:var(--tx3);margin-top:2px"></div>
+        </div>
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Planejado</div>
+          <div id="ex-t-plan" style="font-size:18px;font-weight:800;font-family:var(--mo);color:rgba(192,132,252,.8)">---</div>
+          <div id="ex-t-plan-s" style="font-size:8px;margin-top:2px"></div>
+        </div>
+        <div>
+          <div style="font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">Realizado</div>
+          <div id="ex-t-real" style="font-size:18px;font-weight:800;font-family:var(--mo);color:var(--rd)">---</div>
+          <div id="ex-t-real-s" style="font-size:8px;margin-top:2px"></div>
+        </div>
+      </div>
+      <div id="ex-tempo" style="display:none"></div>
+      <div id="ex-tempo-s" style="display:none"></div>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
@@ -1221,11 +1238,35 @@ function renderExec(){
   var pctK=kp>0?Math.round(kr/kp*100):0;
   document.getElementById('ex-km').innerHTML=fN(kr,1)+'<span class="du">km</span>';
   document.getElementById('ex-km-pct').innerHTML='<span class="badge '+(pctK<=110?'b-ok':pctK<=125?'b-warn':'b-bad')+'">'+(kr>kp?'+':'')+fN(Math.round(kr-kp),1)+' km vs plano</span>';
-  // Tempo
-  var nOk=0,nOv=0,nEq=0;
-  Object.keys(eq).forEach(function(mot){var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';});if(!cargas.length)return;nEq++;var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;if(hRR){if(hRR<=LIMITE)nOk++;else nOv++;}});
-  document.getElementById('ex-tempo').innerHTML=nOk+'<span style="font-size:16px;color:var(--tx3)">/'+nEq+'</span>';
-  document.getElementById('ex-tempo-s').textContent=nOv>0?nOv+' equipe(s) excederam 17:00':'todas no horário';
+  // Tempo — Disponível / Planejado / Realizado
+  var nOk=0,nOv=0,nEq=0,planMinEx=0,nPlanEx=0,realMinEx=0,nRegEx=0;
+  Object.keys(eq).forEach(function(mot){
+    var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    if(!cargas.length)return;nEq++;
+    // Planejado
+    var hSP=hm2min(eq[mot].h_saida_plan||'07:00');
+    var hRPs=cargas.map(function(c){return c.h_ret_plan?hm2min(c.h_ret_plan):null;}).filter(Boolean);
+    if(hRPs.length){planMinEx+=Math.max.apply(null,hRPs)-hSP;nPlanEx++;}
+    // Realizado
+    var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
+    var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
+    if(hRR){realMinEx+=hRR-hSP;nRegEx++;if(hRR<=LIMITE)nOk++;else nOv++;}
+  });
+  var dispMinEx=nEq*600;
+  var elTD=document.getElementById('ex-t-disp'),elTDS=document.getElementById('ex-t-disp-s');
+  var elTP=document.getElementById('ex-t-plan'),elTPS=document.getElementById('ex-t-plan-s');
+  var elTR=document.getElementById('ex-t-real'),elTRS=document.getElementById('ex-t-real-s');
+  if(elTD){elTD.textContent=min2hm(dispMinEx);elTDS.textContent=nEq+' eq × 10h';}
+  if(elTP){
+    elTP.textContent=nPlanEx?min2hm(planMinEx):'---';
+    var folgaP=dispMinEx-planMinEx;
+    if(elTPS)elTPS.innerHTML=nPlanEx?'<span class="badge '+(folgaP>=0?'b-ok':'b-warn')+'">'+(folgaP>=0?min2hm(folgaP)+' folga':'+'+min2hm(Math.abs(folgaP))+' excesso')+'</span>':'';
+  }
+  if(elTR){
+    elTR.textContent=nRegEx?min2hm(realMinEx):'---';
+    var difR=realMinEx-dispMinEx;
+    if(elTRS)elTRS.innerHTML=nRegEx?'<span class="badge '+(difR<=0?'b-ok':difR<=60?'b-warn':'b-bad')+'">'+(difR>0?'+'+min2hm(difR)+' excesso':min2hm(Math.abs(difR))+' folga')+'</span>':'<span style="color:var(--tx3)">aguardando</span>';
+  }
   // Semáforo
   var score=pctP>=95&&nOv===0&&pctK<=115?'verde':pctP>=80&&nOv<=2&&pctK<=130?'amarelo':'vermelho';
   var semEl=document.getElementById('ex-semaforo');
