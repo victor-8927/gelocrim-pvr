@@ -1632,6 +1632,21 @@ function renderRelPeso(eq,ca){
 // ── INIT ──
 window.addEventListener('load',function(){
   loadLocal();
+
+  // Se tem dados no localStorage, renderizar imediatamente
+  var diasLocal=Object.keys(LD).filter(function(d){return LD[d].locked||D[d];});
+  if(diasLocal.length>0){
+    var mesesLocal=diasLocal.map(function(d){return d.substring(0,7);}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+    MES=mesesLocal[mesesLocal.length-1]||'2026-09';
+    buildMesTabs();buildDiaNav();
+    var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+    if(diasM.length)selDia(diasM[diasM.length-1]);
+  } else {
+    // Mostrar loading
+    var nav=document.getElementById('dia-nav');
+    if(nav)nav.innerHTML='<div style="padding:10px;color:var(--tx3);font-size:10px">&#9679; Carregando dias...</div>';
+  }
+
   // Buscar dias do Supabase
   fetch(SB_URL+'/rest/v1/pvr_dias?order=dia&select=dia,mes,km_plan,peso_plan_pv,peso_rotas,peso_eventos,has_prog,locked,lock_ts,obs_peso,obs_km,obs_tempo,chips_peso,chips_km,chips_tempo',{
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
@@ -1654,7 +1669,15 @@ window.addEventListener('load',function(){
     console.warn('Supabase offline:',e);
     // Fallback: usar localStorage
     var meses=Object.keys(LD).map(function(d){return d.substring(0,7);}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
-    if(meses.length){MES=meses[meses.length-1];buildMesTabs();buildDiaNav();}
+    if(meses.length){
+      MES=meses[meses.length-1];
+      buildMesTabs();buildDiaNav();
+      var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
+      if(diasM.length)selDia(diasM[diasM.length-1]);
+    } else {
+      var nav=document.getElementById('dia-nav');
+      if(nav)nav.innerHTML='<div style="padding:10px;color:var(--rd);font-size:10px">&#9888; Sem conexão e sem dados locais</div>';
+    }
   });
 });
 
