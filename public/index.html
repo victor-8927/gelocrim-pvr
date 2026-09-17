@@ -200,7 +200,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="hdr-right">
     <div style="display:flex;gap:4px">
       <button class="nav-tab active" id="nav-lanc" onclick="showPage('lanc')">&#9998; Lançamento</button>
-      <button class="nav-tab" id="nav-rel" onclick="showPage('rel')">&#128202; Relatórios</button>
+      <button class="nav-tab" id="nav-exec" onclick="showPage('exec')">&#128200; Executivo</button>
+      <button class="nav-tab" id="nav-ger" onclick="showPage('ger')">&#128084; Gerência</button>
+      <button class="nav-tab" id="nav-sup" onclick="showPage('sup')">&#128269; Supervisor</button>
+      <button class="nav-tab" id="nav-anal" onclick="showPage('anal')">&#128202; Analista</button>
     </div>
     <div class="live"><span class="dot"></span>Ao vivo</div>
     <div class="clk" id="clk"></div>
@@ -318,6 +321,104 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div id="tab-tempo" style="display:none"></div>
   <div id="tab-km" style="display:none"></div>
   <div id="tab-peso" style="display:none"></div>
+</div>
+
+<!-- EXECUTIVO -->
+<div id="page-exec" style="display:none">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+    <div class="kc p" style="text-align:center;padding:20px">
+      <div class="kc-title">Peso entregue</div>
+      <div class="dv" id="ex-peso" style="font-size:36px;color:var(--gr)">---<span class="du">kg</span></div>
+      <div id="ex-peso-pct" style="font-size:11px;margin-top:4px"></div>
+    </div>
+    <div class="kc k" style="text-align:center;padding:20px">
+      <div class="kc-title">KM rodado</div>
+      <div class="dv" id="ex-km" style="font-size:36px;color:var(--am)">---<span class="du">km</span></div>
+      <div id="ex-km-pct" style="font-size:11px;margin-top:4px"></div>
+    </div>
+    <div class="kc t" style="text-align:center;padding:20px">
+      <div class="kc-title">No horário</div>
+      <div class="dv" id="ex-tempo" style="font-size:36px;color:var(--pu)">---</div>
+      <div id="ex-tempo-s" style="font-size:11px;margin-top:4px;color:var(--tx3)">equipes até 17:00</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+    <div class="kc" style="padding:14px">
+      <div class="kc-title" style="margin-bottom:10px">Status do dia</div>
+      <div id="ex-semaforo" style="font-size:13px;font-weight:700;padding:10px;border-radius:8px;text-align:center">---</div>
+      <div id="ex-causa" style="font-size:10px;color:var(--tx2);margin-top:8px;line-height:1.5"></div>
+    </div>
+    <div class="kc" style="padding:14px">
+      <div class="kc-title" style="margin-bottom:10px">Semana atual</div>
+      <div id="ex-semana" style="font-size:10px;color:var(--tx2);line-height:1.8"></div>
+    </div>
+  </div>
+  <div class="kc" style="padding:14px;margin-bottom:16px">
+    <div class="kc-title" style="margin-bottom:10px">Cancelamentos do dia</div>
+    <div id="ex-cancel" style="font-size:10px;color:var(--tx2)"></div>
+  </div>
+</div>
+
+<!-- GERÊNCIA -->
+<div id="page-ger" style="display:none">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+    <div class="kc" style="padding:14px">
+      <div class="kc-title" style="margin-bottom:10px">&#128680; Causa principal do dia</div>
+      <div id="ger-causa" style="font-size:11px;color:var(--tx2);line-height:1.6"></div>
+    </div>
+    <div class="kc" style="padding:14px">
+      <div class="kc-title" style="margin-bottom:10px">Planejado vs Realizado</div>
+      <div id="ger-pvr" style="font-size:10px;line-height:1.8"></div>
+    </div>
+  </div>
+  <div class="kc" style="padding:14px;margin-bottom:16px">
+    <div class="kc-title" style="margin-bottom:10px">Equipes — resumo do dia</div>
+    <div id="ger-equipes" style="font-size:10px"></div>
+  </div>
+  <div class="kc" style="padding:14px;margin-bottom:16px">
+    <div class="kc-title" style="margin-bottom:10px">Cancelamentos com motivo</div>
+    <div id="ger-cancel" style="font-size:10px;color:var(--tx2)"></div>
+  </div>
+</div>
+
+<!-- SUPERVISOR -->
+<div id="page-sup" style="display:none">
+  <div class="kc" style="padding:14px;margin-bottom:12px">
+    <div class="kc-title" style="margin-bottom:8px">&#9989; Checklist do dia</div>
+    <div id="sup-check" style="font-size:10px;line-height:2"></div>
+  </div>
+  <div class="kc" style="padding:14px;margin-bottom:12px">
+    <div class="kc-title" style="margin-bottom:8px">Atrasos de saída por equipe</div>
+    <div id="sup-atrasos" style="font-size:10px"></div>
+  </div>
+  <div class="kc" style="padding:14px;margin-bottom:12px">
+    <div class="kc-title" style="margin-bottom:8px">Alertas de intervalo entre cargas</div>
+    <div id="sup-intervalos" style="font-size:10px"></div>
+  </div>
+  <div class="kc" style="padding:14px;margin-bottom:12px">
+    <div class="kc-title" style="margin-bottom:8px">Equipes com excesso após 17:00</div>
+    <div id="sup-excesso" style="font-size:10px"></div>
+  </div>
+</div>
+
+<!-- ANALISTA -->
+<div id="page-anal" style="display:none">
+  <div class="filtros">
+    <span class="fil-label">Período:</span>
+    <select class="fil-sel" id="anal-mes"><option value="2026-09">Set 2026</option><option value="2026-08">Ago 2026</option></select>
+    <button class="fil-btn" onclick="carregarAnal()">Atualizar</button>
+    <span id="anal-status" style="font-size:9px;color:var(--tx3)"></span>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTabAnal('dia',this)">Por dia</div>
+    <div class="tab" onclick="showTabAnal('rota',this)">Por rota</div>
+    <div class="tab" onclick="showTabAnal('motorista',this)">Por motorista</div>
+    <div class="tab" onclick="showTabAnal('padroes',this)">Padrões</div>
+  </div>
+  <div id="anal-dia"><div class="nodata">Clique em Atualizar</div></div>
+  <div id="anal-rota" style="display:none"></div>
+  <div id="anal-motorista" style="display:none"></div>
+  <div id="anal-padroes" style="display:none"></div>
 </div>
 
 <div class="footer">Gelocrim Industria de Gelo Ltda &#183; Manaus-AM &#183; PVR &#183; Limite 17:00 &#183; Alerta KM &gt;5km</div>
@@ -520,10 +621,15 @@ async function selDia(dia){
   buildDiaNav();
 }
 function showPage(p){
-  document.getElementById('page-lanc').style.display=p==='lanc'?'':'none';
-  document.getElementById('page-rel').style.display=p==='rel'?'':'none';
-  document.getElementById('nav-lanc').classList.toggle('active',p==='lanc');
-  document.getElementById('nav-rel').classList.toggle('active',p==='rel');
+  ['lanc','exec','ger','sup','anal'].forEach(function(id){
+    var pg=document.getElementById('page-'+id);
+    var nb=document.getElementById('nav-'+id);
+    if(pg)pg.style.display=p===id?'':'none';
+    if(nb)nb.classList.toggle('active',p===id);
+  });
+  if(p==='exec')renderExec();
+  if(p==='ger')renderGer();
+  if(p==='sup')renderSup();
 }
 
 // ── CHIPS ──
@@ -1080,6 +1186,211 @@ function exportar(){
 }
 
 // ── RELATÓRIOS ──
+// ── DASHBOARDS ──
+function renderExec(){
+  if(!DIA||!D[DIA])return;
+  var d=D[DIA],eq=d.equipes||{};
+  // Peso
+  var pp=d.peso_plan_pv||0,pr=0,pesoCan=0;
+  Object.values(eq).forEach(function(E){E.cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);});});
+  var pctP=pp>0?Math.round(pr/pp*100):0;
+  document.getElementById('ex-peso').innerHTML=fN(pr)+'<span class="du">kg</span>';
+  document.getElementById('ex-peso-pct').innerHTML='<span class="badge '+(pctP>=95?'b-ok':pctP>=80?'b-warn':'b-bad')+'">'+pctP+'% do planejado</span>';
+  // KM
+  var kp=d.km_plan||0,kr=0;
+  Object.keys(eq).forEach(function(mot){(eq[mot].cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(c.tipo==='evento'||lc.cancelada)return;if(lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
+  var pctK=kp>0?Math.round(kr/kp*100):0;
+  document.getElementById('ex-km').innerHTML=fN(kr,1)+'<span class="du">km</span>';
+  document.getElementById('ex-km-pct').innerHTML='<span class="badge '+(pctK<=110?'b-ok':pctK<=125?'b-warn':'b-bad')+'">'+(kr>kp?'+':'')+fN(Math.round(kr-kp),1)+' km vs plano</span>';
+  // Tempo
+  var nOk=0,nOv=0,nEq=0;
+  Object.keys(eq).forEach(function(mot){var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';});if(!cargas.length)return;nEq++;var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;if(hRR){if(hRR<=LIMITE)nOk++;else nOv++;}});
+  document.getElementById('ex-tempo').innerHTML=nOk+'<span style="font-size:16px;color:var(--tx3)">/'+nEq+'</span>';
+  document.getElementById('ex-tempo-s').textContent=nOv>0?nOv+' equipe(s) excederam 17:00':'todas no horário';
+  // Semáforo
+  var score=pctP>=95&&nOv===0&&pctK<=115?'verde':pctP>=80&&nOv<=2&&pctK<=130?'amarelo':'vermelho';
+  var semEl=document.getElementById('ex-semaforo');
+  var semCor=score==='verde'?'rgba(77,255,195,.15)':score==='amarelo'?'rgba(255,209,102,.15)':'rgba(255,128,144,.15)';
+  var semTx=score==='verde'?'var(--gr)':score==='amarelo'?'var(--am)':'var(--rd)';
+  var semTxt=score==='verde'?'✅ Dia dentro da meta':score==='amarelo'?'⚠️ Atenção — desvios registrados':'🔴 Dia abaixo da meta';
+  semEl.style.background=semCor;semEl.style.color=semTx;semEl.textContent=semTxt;
+  // Causa principal
+  var ld=LD[DIA]||{};
+  var causas=(ld.c_t||[]).concat(ld.c_p||[]).concat(ld.c_k||[]);
+  var obsGeral=ld.obs_t||ld.obs_p||ld.obs_k||'';
+  document.getElementById('ex-causa').innerHTML=(causas.length?causas.map(function(c){return '<span class="badge b-warn">'+c+'</span>';}).join(' '):'<span style="color:var(--tx3)">Sem motivo registrado</span>')+(obsGeral?'<br><span style="font-style:italic;color:var(--tx3)">'+obsGeral+'</span>':'');
+  // Cancelamentos
+  var cans=[];Object.keys(eq).forEach(function(mot){(eq[mot].cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada)cans.push({rota:c.rota,mot:mot,peso:c.peso_plan,motivo:lc.cancel_motivo||'Sem motivo'});});});
+  document.getElementById('ex-cancel').innerHTML=cans.length?cans.map(function(c){return '<div style="padding:5px 0;border-bottom:1px solid var(--b)">❌ <b>'+c.rota+'</b> ('+c.mot+') — '+fN(c.peso)+' kg — <span style="color:var(--am)">'+c.motivo+'</span></div>';}).join(''):'<span style="color:var(--gr)">Nenhum cancelamento</span>';
+  // Semana
+  var mots=Object.keys(eq);
+  document.getElementById('ex-semana').innerHTML=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort().map(function(dia){var ld2=LD[dia]||{};return '<div>'+fDia(dia)+' '+(ld2.locked?'🔒':' ')+'</div>';}).join('');
+}
+
+function renderGer(){
+  if(!DIA||!D[DIA])return;
+  var d=D[DIA],eq=d.equipes||{},ld=LD[DIA]||{};
+  // Causa principal
+  var chips=(ld.c_t||[]).concat(ld.c_p||[]).concat(ld.c_k||[]);
+  var obs=ld.obs_t||ld.obs_p||ld.obs_k||'';
+  document.getElementById('ger-causa').innerHTML=(chips.length?'<b>Motivos registrados:</b> '+chips.join(', ')+'<br>':'<span style="color:var(--am)">⚠️ Nenhum motivo registrado para o dia</span>')+(obs?'<br><i>'+obs+'</i>':'');
+  // PVR
+  var pp=d.peso_plan_pv||0,pr=0,pesoCan=0,kp=d.km_plan||0,kr=0;
+  Object.values(eq).forEach(function(E){E.cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);if(c.tipo!=='evento'&&lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
+  document.getElementById('ger-pvr').innerHTML='<div>&#9992; Peso planejado: <b>'+fN(pp)+' kg</b> → realizado: <b style="color:var(--gr)">'+fN(pr)+' kg</b> ('+Math.round(pr/pp*100)+'%)</div><div>&#128666; KM planejado: <b>'+fN(kp,1)+' km</b> → real: <b style="color:'+(kr>kp*1.1?'var(--am)':'var(--gr)')+'">'+fN(kr,1)+' km</b></div>'+(pesoCan?'<div>❌ Cancelado: <b style="color:var(--rd)">'+fN(pesoCan)+' kg</b></div>':'');
+  // Equipes
+  var eqHtml='<table style="width:100%;font-size:9px;border-collapse:collapse"><tr style="color:var(--tx3)"><th style="text-align:left;padding:4px">Equipe</th><th style="text-align:right;padding:4px">Saída</th><th style="text-align:right;padding:4px">Retorno</th><th style="text-align:right;padding:4px">Atraso</th><th style="text-align:right;padding:4px">Excesso</th><th style="text-align:right;padding:4px">Motivo</th></tr>';
+  Object.keys(eq).forEach(function(mot){
+    var E=eq[mot],le=(LE[DIA]||{})[mot]||{};
+    var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    var hSP=E.h_saida_plan||'07:00';
+    var hSRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_saida_real||c.h_saida_real||null;}).filter(Boolean);
+    var hSR=hSRs.length?min2hm(Math.min.apply(null,hSRs.map(hm2min))):null;
+    var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
+    var hRR=hRRs.length?min2hm(Math.max.apply(null,hRRs.map(hm2min))):null;
+    var atraso=hSR?Math.max(0,hm2min(hSR)-hm2min(hSP)):null;
+    var excesso=hRR?Math.max(0,hm2min(hRR)-LIMITE):null;
+    eqHtml+='<tr style="border-top:1px solid var(--b)"><td style="padding:4px;font-weight:700">'+mot+'</td><td style="text-align:right;padding:4px;color:'+(atraso&&atraso>0?'var(--am)':'var(--gr)')+'">'+( hSR||'---')+'</td><td style="text-align:right;padding:4px;color:'+(excesso&&excesso>0?'var(--rd)':'var(--gr)')+'">'+( hRR||'---')+'</td><td style="text-align:right;padding:4px;color:var(--am)">'+(atraso!==null?'+'+min2hm(atraso):'---')+'</td><td style="text-align:right;padding:4px;color:var(--rd)">'+(excesso&&excesso>0?'+'+min2hm(excesso):'✓')+'</td><td style="text-align:right;padding:4px;color:var(--tx3);font-size:8px">'+( le.motivo_atraso||'—')+'</td></tr>';
+  });
+  document.getElementById('ger-equipes').innerHTML=eqHtml+'</table>';
+  // Cancelamentos
+  var cans=[];Object.keys(eq).forEach(function(mot){(eq[mot].cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada)cans.push({rota:c.rota,mot:mot,peso:c.peso_plan,km:c.km_plan,motivo:lc.cancel_motivo||'',obs:lc.obs_carga||''});});});
+  document.getElementById('ger-cancel').innerHTML=cans.length?cans.map(function(c){return '<div style="padding:6px;border:1px solid rgba(255,128,144,.2);border-radius:6px;margin-bottom:5px;background:var(--rdd)">❌ <b>'+c.rota+'</b> ('+c.mot+') — '+fN(c.peso)+' kg / '+fN(c.km,1)+' km<br><span style="color:var(--am)">Motivo: '+(c.motivo||'não registrado')+'</span>'+(c.obs?'<br><span style="color:var(--tx3);font-style:italic">'+c.obs+'</span>':'')+'</div>';}).join(''):'<span style="color:var(--gr)">✅ Nenhum cancelamento no dia</span>';
+}
+
+function renderSup(){
+  if(!DIA||!D[DIA])return;
+  var d=D[DIA],eq=d.equipes||{};
+  // Checklist
+  var nEq=Object.keys(eq).filter(function(m){return(eq[m].cargas||[]).some(function(c){return c.tipo!=='evento';});}).length;
+  var nOk=Object.keys(eq).filter(function(m){return(LE[DIA]||{})[m]&&(LE[DIA]||{})[m].ok;}).length;
+  var nMotivo=Object.keys(eq).filter(function(m){return(LE[DIA]||{})[m]&&(LE[DIA]||{})[m].motivo_atraso;}).length;
+  var ld=LD[DIA]||{};
+  document.getElementById('sup-check').innerHTML='<div>'+(nOk===nEq?'✅':'⬜')+' Equipes confirmadas: <b>'+nOk+'/'+nEq+'</b></div><div>'+(nMotivo===nEq?'✅':'⚠️')+' Motivos de atraso: <b>'+nMotivo+'/'+nEq+' registrados</b></div><div>'+( ld.locked?'✅':'⬜')+' Dia encerrado: <b>'+(ld.locked?'Sim — '+ld.lock_ts:'Não')+'</b></div>';
+  // Atrasos
+  var atHtml='';
+  Object.keys(eq).forEach(function(mot){
+    var E=eq[mot],le=(LE[DIA]||{})[mot]||{};
+    var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    var hSP=E.h_saida_plan||'07:00';
+    var hSRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_saida_real||c.h_saida_real||null;}).filter(Boolean);
+    var hSR=hSRs.length?min2hm(Math.min.apply(null,hSRs.map(hm2min))):null;
+    var atraso=hSR?Math.max(0,hm2min(hSR)-hm2min(hSP)):0;
+    if(atraso>0)atHtml+='<div style="padding:5px 8px;border-radius:6px;margin-bottom:4px;background:var(--amd);border:1px solid rgba(255,209,102,.2)"><b>'+mot+'</b> — saída: '+hSP+' → real: '+hSR+' — <span style="color:var(--am)">atraso: +'+min2hm(atraso)+'</span>'+(le.motivo_atraso?' — <span style="color:var(--tx3)">'+le.motivo_atraso+'</span>':' — <span style="color:var(--rd)">sem motivo</span>')+'</div>';
+  });
+  document.getElementById('sup-atrasos').innerHTML=atHtml||'<span style="color:var(--gr)">✅ Todas as equipes saíram no horário</span>';
+  // Intervalos
+  var intHtml='';
+  Object.keys(eq).forEach(function(mot){
+    var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';}).sort(function(a,b){return (a.h_saida_plan||'').localeCompare(b.h_saida_plan||'');});
+    for(var i=0;i<cargas.length-1;i++){
+      var cA=cargas[i],cB=cargas[i+1];
+      if(cA.h_ret_plan&&cB.h_saida_plan){
+        var intMin=hm2min(cB.h_saida_plan)-hm2min(cA.h_ret_plan);
+        var cls=intMin>=72?'b-ok':intMin>=60?'b-warn':'b-bad';
+        var icon=intMin>=72?'✅':intMin>=60?'⚠️':'❌';
+        intHtml+='<div style="padding:5px 8px;border-radius:6px;margin-bottom:4px;border:1px solid var(--b);font-size:9px">'+icon+' <b>'+mot+'</b> — entre '+cA.rota.replace('ROTA ','')+' e '+cB.rota.replace('ROTA ','')+': <span class="badge '+cls+'">'+min2hm(intMin)+'</span>'+(intMin<72?' abaixo do mínimo':'')+'</div>';
+      }
+    }
+  });
+  document.getElementById('sup-intervalos').innerHTML=intHtml||'<span style="color:var(--gr)">✅ Todos os intervalos dentro do limite</span>';
+  // Excessos
+  var excHtml='';
+  Object.keys(eq).forEach(function(mot){
+    var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
+    if(!hRRs.length)return;
+    var hRR=Math.max.apply(null,hRRs.map(hm2min));
+    if(hRR>LIMITE){var exc=hRR-LIMITE;excHtml+='<div style="padding:5px 8px;border-radius:6px;margin-bottom:4px;background:var(--rdd);border:1px solid rgba(255,128,144,.2);font-size:9px">🔴 <b>'+mot+'</b> — retorno: '+min2hm(hRR)+' — excesso: <span style="color:var(--rd)">+'+min2hm(exc)+'</span></div>';}
+  });
+  document.getElementById('sup-excesso').innerHTML=excHtml||'<span style="color:var(--gr)">✅ Todas as equipes retornaram até 17:00</span>';
+}
+
+// ── ANALISTA ──
+var ANAL_DIAS=[],ANAL_EQ=[],ANAL_CARGAS=[],TAB_ANAL='dia';
+function showTabAnal(tab,el){TAB_ANAL=tab;document.querySelectorAll('#page-anal .tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');['dia','rota','motorista','padroes'].forEach(function(t){document.getElementById('anal-'+t).style.display=t===tab?'':'none';});renderTabAnal();}
+async function carregarAnal(){
+  var mes=document.getElementById('anal-mes').value,st=document.getElementById('anal-status');
+  st.textContent='Carregando...';
+  try{
+    var pts=mes.split('-'),ult=new Date(+pts[0],+pts[1],0).getDate();
+    ANAL_DIAS=await sbGet('/rest/v1/pvr_dias?mes=eq.'+mes+'&order=dia');
+    ANAL_EQ=await sbGet('/rest/v1/pvr_equipes?dia=gte.'+mes+'-01&dia=lte.'+mes+'-'+ult+'&order=dia,motorista');
+    ANAL_CARGAS=await sbGet('/rest/v1/pvr_cargas?dia=gte.'+mes+'-01&dia=lte.'+mes+'-'+ult+'&order=dia,motorista');
+    st.textContent=ANAL_DIAS.length+' dias carregados';renderTabAnal();
+  }catch(e){st.textContent='Erro: '+e.message;}
+}
+function renderTabAnal(){
+  if(TAB_ANAL==='dia')renderAnalDia();
+  else if(TAB_ANAL==='rota')renderAnalRota();
+  else if(TAB_ANAL==='motorista')renderAnalMot();
+  else renderAnalPadroes();
+}
+function renderAnalDia(){
+  var el=document.getElementById('anal-dia');
+  if(!ANAL_DIAS.length){el.innerHTML='<div class="nodata">Clique em Atualizar</div>';return;}
+  var html='<div class="tbl-wrap"><div class="tbl-hdr">Resumo por dia</div><table><thead><tr><th>Dia</th><th class="r">Equipes</th><th class="r">Peso plan.</th><th class="r">Peso real</th><th class="r">%</th><th class="r">KM plan.</th><th class="r">KM real</th><th class="r">Atrasos</th><th class="r">Excedidos</th></tr></thead><tbody>';
+  ANAL_DIAS.forEach(function(d){
+    var eqD=ANAL_EQ.filter(function(e){return e.dia===d.dia;});
+    var caD=ANAL_CARGAS.filter(function(c){return c.dia===d.dia;});
+    var kmP=eqD.reduce(function(s,e){return s+(+e.km_plan||0);},0);
+    var kmR=eqD.reduce(function(s,e){return s+(+e.km_real||0);},0);
+    var pesoR=caD.filter(function(c){return c.ok&&!c.cancelada;}).reduce(function(s,c){return s+(+(c.peso_real||c.peso_plan)||0);},0);
+    var nAtraso=eqD.filter(function(e){return e.h_saida_real&&hm2min(e.h_saida_real)>hm2min(e.h_saida_plan||'07:00');}).length;
+    var nExc=eqD.filter(function(e){return e.h_ret_real&&hm2min(e.h_ret_real)>LIMITE;}).length;
+    var pct=d.peso_plan_pv>0?Math.round(pesoR/d.peso_plan_pv*100):0;
+    html+='<tr><td class="lbl2">'+fDia(d.dia)+(d.locked?' 🔒':'')+'</td><td class="r">'+eqD.length+'</td><td class="r">'+fN(Math.round(d.peso_plan_pv))+' kg</td><td class="r">'+( pesoR?fN(Math.round(pesoR))+' kg':'---')+'</td><td class="r"><span class="badge '+(pct>=95?'b-ok':pct>=80?'b-warn':'b-bad')+'">'+pct+'%</span></td><td class="r">'+fN(Math.round(kmP))+' km</td><td class="r">'+( kmR?fN(Math.round(kmR))+' km':'---')+'</td><td class="r"><span class="'+(nAtraso>3?'dif-bad':nAtraso>0?'dif-warn':'dif-ok')+'">'+nAtraso+'</span></td><td class="r"><span class="'+(nExc>0?'dif-bad':'dif-ok')+'">'+nExc+'</span></td></tr>';
+  });
+  el.innerHTML=html+'</tbody></table></div>';
+}
+function renderAnalRota(){
+  var el=document.getElementById('anal-rota');
+  var rotas=[...new Set(ANAL_CARGAS.map(function(c){return c.rota;}))].sort();
+  var html='<div class="tbl-wrap"><div class="tbl-hdr">Performance por rota</div><table><thead><tr><th>Rota</th><th class="r">Viagens</th><th class="r">Canceladas</th><th class="r">% cancel.</th><th class="r">Peso total</th><th class="r">KM médio</th></tr></thead><tbody>';
+  rotas.forEach(function(r){
+    var caR=ANAL_CARGAS.filter(function(c){return c.rota===r;});
+    var nCan=caR.filter(function(c){return c.cancelada;}).length;
+    var pesoT=caR.filter(function(c){return !c.cancelada;}).reduce(function(s,c){return s+(+c.peso_plan||0);},0);
+    var kmT=caR.filter(function(c){return !c.cancelada;}).reduce(function(s,c){return s+(+c.km_plan||0);},0);
+    var pctCan=caR.length?Math.round(nCan/caR.length*100):0;
+    html+='<tr><td class="lbl2">'+r+'</td><td class="r">'+caR.length+'</td><td class="r"><span class="'+(nCan>0?'dif-warn':'dif-ok')+'">'+nCan+'</span></td><td class="r"><span class="badge '+(pctCan>20?'b-bad':pctCan>10?'b-warn':'b-ok')+'">'+pctCan+'%</span></td><td class="r">'+fN(Math.round(pesoT))+' kg</td><td class="r">'+fN(Math.round(kmT/Math.max(1,caR.length-nCan)),1)+' km</td></tr>';
+  });
+  el.innerHTML=html+'</tbody></table></div>';
+}
+function renderAnalMot(){
+  var el=document.getElementById('anal-motorista');
+  var mots=[...new Set(ANAL_EQ.map(function(e){return e.motorista;}))].sort();
+  var html='<div class="tbl-wrap"><div class="tbl-hdr">Performance por motorista</div><table><thead><tr><th>Motorista</th><th class="r">Dias</th><th class="r">Atrasos saída</th><th class="r">Excedidos</th><th class="r">KM médio</th></tr></thead><tbody>';
+  mots.forEach(function(m){
+    var eqM=ANAL_EQ.filter(function(e){return e.motorista===m;});
+    var nAt=eqM.filter(function(e){return e.h_saida_real&&hm2min(e.h_saida_real)>hm2min(e.h_saida_plan||'07:00');}).length;
+    var nEx=eqM.filter(function(e){return e.h_ret_real&&hm2min(e.h_ret_real)>LIMITE;}).length;
+    var kmM=eqM.reduce(function(s,e){return s+(+e.km_real||0);},0);
+    html+='<tr><td class="lbl2" style="font-weight:700">'+m+'</td><td class="r">'+eqM.length+'</td><td class="r"><span class="'+(nAt>eqM.length*0.5?'dif-bad':nAt>0?'dif-warn':'dif-ok')+'">'+nAt+'/'+eqM.length+'</span></td><td class="r"><span class="'+(nEx>0?'dif-bad':'dif-ok')+'">'+nEx+'</span></td><td class="r">'+( kmM?fN(Math.round(kmM/eqM.length),1)+' km':'---')+'</td></tr>';
+  });
+  el.innerHTML=html+'</tbody></table></div>';
+}
+function renderAnalPadroes(){
+  var el=document.getElementById('anal-padroes');
+  if(!ANAL_CARGAS.length){el.innerHTML='<div class="nodata">Clique em Atualizar</div>';return;}
+  var html='<div class="kc" style="padding:14px;margin-bottom:12px"><div class="kc-title" style="margin-bottom:8px">🔍 Padrões identificados</div>';
+  // Rota que mais cancela
+  var cancelPorRota={};ANAL_CARGAS.forEach(function(c){if(!cancelPorRota[c.rota])cancelPorRota[c.rota]={can:0,tot:0};cancelPorRota[c.rota].tot++;if(c.cancelada)cancelPorRota[c.rota].can++;});
+  var rotaMax=Object.keys(cancelPorRota).sort(function(a,b){return cancelPorRota[b].can-cancelPorRota[a].can;})[0];
+  if(rotaMax&&cancelPorRota[rotaMax].can>0)html+='<div style="padding:8px;border-radius:6px;background:var(--rdd);margin-bottom:8px;font-size:10px">❌ <b>Rota que mais cancela:</b> '+rotaMax+' — '+cancelPorRota[rotaMax].can+' cancelamentos de '+cancelPorRota[rotaMax].tot+' viagens ('+Math.round(cancelPorRota[rotaMax].can/cancelPorRota[rotaMax].tot*100)+'%)</div>';
+  // Dia da semana com mais atrasos
+  var atPorDia={0:0,1:0,2:0,3:0,4:0,5:0,6:0};var totPorDia={0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+  ANAL_EQ.forEach(function(e){var dt=new Date(e.dia);var dw=dt.getDay();totPorDia[dw]=(totPorDia[dw]||0)+1;if(e.h_saida_real&&hm2min(e.h_saida_real)>hm2min(e.h_saida_plan||'07:00'))atPorDia[dw]=(atPorDia[dw]||0)+1;});
+  var nDs=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  var dwMax=Object.keys(atPorDia).sort(function(a,b){return atPorDia[b]-atPorDia[a];})[0];
+  if(totPorDia[dwMax]>0)html+='<div style="padding:8px;border-radius:6px;background:var(--amd);margin-bottom:8px;font-size:10px">⚠️ <b>Dia com mais atrasos:</b> '+nDs[dwMax]+' — '+atPorDia[dwMax]+' atrasos de '+totPorDia[dwMax]+' equipes</div>';
+  // KM acima do planejado
+  var kmOver=ANAL_EQ.filter(function(e){return e.km_real&&e.km_plan&&(+e.km_real)>(+e.km_plan)*1.15;});
+  if(kmOver.length)html+='<div style="padding:8px;border-radius:6px;background:var(--amd);margin-bottom:8px;font-size:10px">🚗 <b>'+kmOver.length+' ocorrências</b> de KM real >15% acima do planejado no mês</div>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
 var DADOS_DIAS=[],DADOS_EQ=[],DADOS_CARGAS=[],TAB_ATUAL='resumo';
 function showTab(tab,el){TAB_ATUAL=tab;document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');document.querySelectorAll('[id^="tab-"]').forEach(function(d){d.style.display='none';});document.getElementById('tab-'+tab).style.display='';renderTab();}
 async function carregarRel(){
