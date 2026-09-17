@@ -151,6 +151,15 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
 .cancel-chip{padding:3px 9px;border-radius:5px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(255,128,144,.3);background:rgba(255,128,144,.06);color:var(--tx2)}
 .cancel-chip.sel{background:rgba(255,128,144,.25);border-color:var(--rd);color:var(--rd);font-weight:700}
 .eq-footer{display:flex;justify-content:flex-end;margin-top:8px}
+.mot-dropdown{position:relative;display:inline-block}
+.mot-btn{padding:3px 10px;border-radius:5px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(0,194,255,.3);background:rgba(0,194,255,.08);color:var(--cy);font-family:var(--mo);white-space:nowrap}
+.mot-btn.sel{background:rgba(0,194,255,.2);border-color:var(--cy)}
+.mot-list{display:none;position:absolute;top:100%;left:0;z-index:999;background:#0D2A3A;border:1px solid var(--b);border-radius:8px;padding:6px;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.mot-list.open{display:block}
+.mot-item{padding:6px 10px;border-radius:5px;font-size:10px;cursor:pointer;color:var(--tx2);white-space:nowrap}
+.mot-item:hover{background:rgba(255,255,255,.06)}
+.mot-item.sel{background:rgba(0,194,255,.15);color:var(--cy);font-weight:700}
+.mot-obs-inp{width:100%;margin-top:5px;background:rgba(255,255,255,.05);border:1px solid var(--b);border-radius:5px;color:var(--tx);font-size:9px;padding:4px 7px}
 .intervalo-card{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:7px;margin-bottom:6px;font-size:9px;font-weight:600}
 .intervalo-ok{background:var(--grd);border:1px solid rgba(77,255,195,.2);color:var(--gr)}
 .intervalo-warn{background:var(--amd);border:1px solid rgba(255,209,102,.2);color:var(--am)}
@@ -1061,7 +1070,7 @@ function renderEquipes(){
         html+='<tr><td class="lbl">Tempo exec.</td><td class="r plan">'+( tPlanM!==null?min2hm(tPlanM):'---')+'</td><td class="r" style="color:'+(tRealM!==null?'var(--tx)':'var(--tx3)')+'">'+( tRealM!==null?min2hm(tRealM):'---')+'</td><td class="r"><span class="'+(tDif===null?'dif-nd':tDif>30?'dif-bad':tDif>0?'dif-warn':'dif-ok')+'">'+(tDif!==null?(tDif>0?'+':'')+min2hm(Math.abs(tDif)):'---')+'</span></td><td></td></tr>';
         html+='<tr><td class="lbl">KM</td><td class="r plan">'+fN(c.km_plan,1)+' km</td><td class="r"><div style="display:flex;gap:3px;justify-content:flex-end;align-items:center"><input type="number" class="real-inp" placeholder="ini" style="width:60px" value="'+(lc.hod_ini||'')+'" onchange="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)"><span style="color:var(--tx3)">&#8594;</span><input type="number" class="real-inp" placeholder="fim" style="width:60px" value="'+(lc.hod_ret||'')+'" onchange="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)"></div></td>';
         html+='<td class="r"><span class="'+(kmDif===null?'dif-nd':Math.abs(kmDif)>5?'dif-bad':'dif-ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td>';
-        html+='<td>'+(kmDif!==null&&Math.abs(kmDif)>5?renderMotivoInline(c.id,'km',MOT_KM):'<span style="font-size:8px;color:var(--tx3)">—</span>')+'</td><td></td></tr>';
+        html+='<td>'+renderMotivoInline(c.id,'km',MOT_KM)+'</td><td></td></tr>';
         html+='<tr><td class="lbl">Peso</td><td class="r plan">'+fN(c.peso_plan)+' kg</td><td class="r"><input type="number" class="real-inp" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" oninput="setPeso(\''+c.id+'\',this.value)"></td><td class="r"><span class="'+(pesoDif===null?'dif-nd':Math.abs(pesoDif)>500?'dif-warn':'dif-ok')+'">'+(pesoDif!==null?(pesoDif>0?'+':'')+fN(pesoDif)+' kg':'---')+'</span></td><td><button class="bok '+(lc.ok?'done':'idle')+'" onclick="togCOk(\''+c.id+'\')">'+(lc.ok?'\u2713':'OK')+'</button></td></tr>';
         // Observação por carga
         var lcObs=lc.obs_carga||'';
@@ -1102,25 +1111,36 @@ function togMotivoCarga(cid,tipo,m){
 function renderMotivoInline(cid,tipo,arr){
   var mot=getMotivosCarga(cid);
   var sel=mot[tipo]||'';
-  var parts=['<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">'];
+  var uid='mot_'+cid.replace(/[^a-z0-9]/gi,'X')+'_'+tipo;
+  var btnLbl=sel?sel.substring(0,15)+'...':'+ Motivo';
+  var btnCls='mot-btn'+(sel?' sel':'');
+  var parts=[];
+  parts.push('<div class="mot-dropdown" id="dd_'+uid+'">');
+  parts.push('<button class="'+btnCls+'" data-ddid="dd_'+uid+'" onclick="togMotDrop(this.dataset.ddid)">'+btnLbl+' &#9662;</button>');
+  parts.push('<div class="mot-list" id="list_'+uid+'">');
   arr.forEach(function(m){
     var ativo=sel===m;
-    var cor=ativo?'var(--cy)':'var(--tx3)';
-    var bg=ativo?'rgba(0,194,255,.15)':'rgba(255,255,255,.04)';
-    var bd=ativo?'var(--cy)':'rgba(255,255,255,.12)';
-    var stl='padding:2px 7px;border-radius:4px;font-size:8px;font-weight:600;cursor:pointer;border:1px solid '+bd+';background:'+bg+';color:'+cor;
-    var mc=m.replace(/[^\w\s\-]/g,'_');
-    var cc=cid.replace(/'/g,"\'");
-    var tc=tipo.replace(/'/g,"\'");
-    var spanEl='<span style="'+stl+'" data-cid="'+cid+'" data-tipo="'+tipo+'" data-m="'+mc+'" onclick="togMotivoCarga(this.dataset.cid,this.dataset.tipo,this.dataset.m)">'+m+'</span>';
-    parts.push(spanEl);
+    parts.push('<div class="mot-item'+(ativo?' sel':'')+'" data-cid="'+cid+'" data-tipo="'+tipo+'" data-m="'+m+'" onclick="selMotivo(this)">'+m+'</div>');
   });
-  parts.push('</div>');
   if(sel==='Outros'){
     var obsVal=(mot[tipo+'_obs']||'').replace(/"/g,'&quot;');
-    parts.push('<input type="text" style="width:100%;margin-top:3px;background:rgba(255,255,255,.05);border:1px solid var(--b);border-radius:4px;color:var(--tx);font-size:9px;padding:3px 6px" placeholder="Descreva o motivo..." value="'+obsVal+'" data-cid="'+cid+'" data-tipo="'+tipo+'_obs" onchange="setMotivoObs(this.dataset.cid,this.dataset.tipo,this.value)">');
+    parts.push('<input class="mot-obs-inp" type="text" placeholder="Descreva..." value="'+obsVal+'" data-cid="'+cid+'" data-tipo="'+tipo+'_obs" onchange="setMotivoObs(this.dataset.cid,this.dataset.tipo,this.value)">');
   }
+  parts.push('</div></div>');
   return parts.join('');
+}
+function togMotDrop(ddId){
+  var dd=document.getElementById(ddId);
+  if(!dd)return;
+  var list=dd.querySelector('.mot-list');
+  if(!list)return;
+  var isOpen=list.classList.contains('open');
+  document.querySelectorAll('.mot-list.open').forEach(function(el){el.classList.remove('open');});
+  if(!isOpen)list.classList.add('open');
+}
+function selMotivo(el){
+  togMotivoCarga(el.dataset.cid,el.dataset.tipo,el.dataset.m);
+  document.querySelectorAll('.mot-list.open').forEach(function(e){e.classList.remove('open');});
 }
 function setMotivoObs(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};if(!LC[DIA][cid].motivos)LC[DIA][cid].motivos={};LC[DIA][cid].motivos[campo]=v;saveLocal();}
 function setObsCarga(cid,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].obs_carga=v;saveLocal();}
