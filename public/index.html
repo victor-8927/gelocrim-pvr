@@ -1347,7 +1347,8 @@ function renderGer(){
     '<div style="margin-bottom:6px">&#128664; KM: <b style="color:rgba(255,209,102,.7)">'+fN(kp,1)+' km</b> plan. → <b style="color:'+(kr>kp*1.1?'var(--am)':'var(--gr)')+'">'+fN(kr,1)+' km</b> real <span class="badge '+(Math.abs(kr-kp)<=kp*0.1?'b-ok':Math.abs(kr-kp)<=kp*0.2?'b-warn':'b-bad')+'">'+(kr>kp?'+':'')+fN(Math.round(kr-kp),1)+' km</span></div>'+
     '<div>&#9201; Tempo: <b style="color:rgba(192,132,252,.7)">'+min2hm(dispMinG)+'</b> disp. → <b style="color:rgba(192,132,252,.9)">'+( nPlanG?min2hm(planMinG):'---')+'</b> plan. → <b style="color:'+(difTempoG>0?'var(--rd)':'var(--gr)')+'">'+( nRegG?min2hm(realMinG):'---')+'</b> real <span class="badge '+(difTempoG<=0?'b-ok':difTempoG<=60?'b-warn':'b-bad')+'">'+(nRegG?(difTempoG>0?'+'+min2hm(difTempoG)+' excesso':min2hm(Math.abs(difTempoG))+' folga'):'aguardando')+'</span></div>';
   // Equipes
-  var eqHtml='<table style="width:100%;font-size:9px;border-collapse:collapse"><tr style="color:var(--tx3)"><th style="text-align:left;padding:4px">Equipe</th><th style="text-align:right;padding:4px">Saída</th><th style="text-align:right;padding:4px">Retorno</th><th style="text-align:right;padding:4px">Atraso</th><th style="text-align:right;padding:4px">Excesso</th><th style="text-align:right;padding:4px">Motivo</th></tr>';
+  var eqHtml='<table style="width:100%;font-size:9px;border-collapse:collapse">';
+  eqHtml+='<tr style="color:var(--tx3)"><th style="text-align:left;padding:4px">Equipe</th><th style="text-align:right;padding:4px">Saída</th><th style="text-align:right;padding:4px">Retorno</th><th style="text-align:right;padding:4px">Atraso</th><th style="text-align:right;padding:4px">Excesso</th><th style="text-align:right;padding:4px">KM plan/real</th><th style="text-align:right;padding:4px">Peso plan/conf</th><th style="text-align:right;padding:4px">Motivo</th></tr>';
   Object.keys(eq).forEach(function(mot){
     var E=eq[mot],le=(LE[DIA]||{})[mot]||{};
     var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
@@ -1358,7 +1359,24 @@ function renderGer(){
     var hRR=hRRs.length?min2hm(Math.max.apply(null,hRRs.map(hm2min))):null;
     var atraso=hSR?Math.max(0,hm2min(hSR)-hm2min(hSP)):null;
     var excesso=hRR?Math.max(0,hm2min(hRR)-LIMITE):null;
-    eqHtml+='<tr style="border-top:1px solid var(--b)"><td style="padding:4px;font-weight:700">'+mot+'</td><td style="text-align:right;padding:4px;color:'+(atraso&&atraso>0?'var(--am)':'var(--gr)')+'">'+( hSR||'---')+'</td><td style="text-align:right;padding:4px;color:'+(excesso&&excesso>0?'var(--rd)':'var(--gr)')+'">'+( hRR||'---')+'</td><td style="text-align:right;padding:4px;color:var(--am)">'+(atraso!==null?'+'+min2hm(atraso):'---')+'</td><td style="text-align:right;padding:4px;color:var(--rd)">'+(excesso&&excesso>0?'+'+min2hm(excesso):'✓')+'</td><td style="text-align:right;padding:4px;color:var(--tx3);font-size:8px">'+( le.motivo_atraso||'—')+'</td></tr>';
+    // KM real por hodômetro
+    var kmRealMot=0;
+    cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(!lc.cancelada&&lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kmRealMot+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});
+    var kmPlanMot=E.km_plan||0;
+    var kmDifMot=kmRealMot?Math.round(kmRealMot-kmPlanMot):null;
+    // Peso confirmado
+    var pesoConfMot=0,pesoPlanMot=E.peso_plan||0;
+    cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(!lc.cancelada&&lc.ok)pesoConfMot+=(lc.peso_real?+lc.peso_real:c.peso_plan);});
+    eqHtml+='<tr style="border-top:1px solid var(--b)">';
+    eqHtml+='<td style="padding:4px;font-weight:700">'+mot+'</td>';
+    eqHtml+='<td style="text-align:right;padding:4px;color:'+(atraso&&atraso>0?'var(--am)':'var(--gr)')+'">'+( hSR||'---')+'</td>';
+    eqHtml+='<td style="text-align:right;padding:4px;color:'+(excesso&&excesso>0?'var(--rd)':'var(--gr)')+'">'+( hRR||'---')+'</td>';
+    eqHtml+='<td style="text-align:right;padding:4px;color:var(--am)">'+(atraso!==null?(atraso>0?'+'+min2hm(atraso):'✓'):'---')+'</td>';
+    eqHtml+='<td style="text-align:right;padding:4px;color:var(--rd)">'+(excesso&&excesso>0?'+'+min2hm(excesso):'<span style="color:var(--gr)">✓</span>')+'</td>';
+    eqHtml+='<td style="text-align:right;padding:4px"><span style="color:var(--tx3)">'+fN(kmPlanMot,1)+'</span> / <span style="color:'+(kmDifMot!==null&&Math.abs(kmDifMot)>5?'var(--am)':'var(--gr)')+'">'+( kmRealMot?fN(kmRealMot,1):'---')+'</span> <span style="font-size:8px;color:'+(kmDifMot!==null?Math.abs(kmDifMot)>5?'var(--am)':'var(--gr)':'var(--tx3)')+'">'+(kmDifMot!==null?(kmDifMot>0?'+':'')+fN(kmDifMot,1):'')+'</span></td>';
+    eqHtml+='<td style="text-align:right;padding:4px"><span style="color:var(--tx3)">'+fN(pesoPlanMot)+'</span> / <span style="color:'+(pesoConfMot?'var(--gr)':'var(--tx3)')+'">'+( pesoConfMot?fN(pesoConfMot):'---')+'</span></td>';
+    eqHtml+='<td style="text-align:right;padding:4px;color:var(--tx3);font-size:8px">'+( le.motivo_atraso||'—')+'</td>';
+    eqHtml+='</tr>';
   });
   document.getElementById('ger-equipes').innerHTML=eqHtml+'</table>';
   // Cancelamentos
