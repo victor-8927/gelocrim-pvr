@@ -468,6 +468,13 @@ var SB_URL='https://wziprddrflgpzankofad.supabase.co';
 var SB_KEY='sb_publishable_h8o3BLGJUUcf8dVjdEY3kg_EhdmcC2o';
 var DIA=null,MES=null,LIMITE=1020;
 var D={},LE={},LC={},LD={};
+
+// Motivos específicos por indicador
+var MOT_SAIDA=['Producao atrasou carregamento','Falta de estoque (sacos)','Falta de equipe carregamento','Avaria em equipamento','Problema no carro','Carro de evento - retorno/limpeza','Nota fiscal atrasada','Outros'];
+var MOT_RETORNO=['Saida atrasada - consequencia','Cliente demorou atender','Cliente fechado - aguardou','Transito / engarrafamento','Problema na rua (pneu/avaria)','Recarga excedeu intervalo','Outros'];
+var MOT_KM=['Fora de sequencia - voltou cliente','Prioridade solicitada logistica','Cliente sem gelo - emergencial','Endereco incorreto no sistema','Desvio por via interditada','Outros'];
+var MOT_PESO=['Saco avariado - fabrica','Saco boyado - calor','Cliente recusou - produto fora padrao','Cliente fechado - fora horario','Pedido cancelado pelo cliente','Fora do horario de recebimento','Outros'];
+
 // Escala fixa Verão 2026 — dia da semana (0=Dom,1=Seg,...,6=Sab)
 var ESCALA={
   '801':[1,2,3,4,5],    // Seg-Sex
@@ -589,7 +596,7 @@ async function sbSaveDia(dia){
           peso_real:lc.peso_real||null,
           hod_ini:lc.hod_ini?+lc.hod_ini:null,hod_ret:lc.hod_ret?+lc.hod_ret:null,
           cancelada:lc.cancelada||false,ok:lc.ok||false,tipo:c.tipo||'1carga',
-          obs:lc.cancel_motivo||'',updated_at:new Date().toISOString()
+          obs:lc.cancel_motivo||'',motivos:lc.motivos||{},updated_at:new Date().toISOString()
         });
       });
     });
@@ -624,7 +631,7 @@ async function sbLoadDia(dia){
         D[dia].equipes[e.motorista]={cargas:[],vdas:e.vdas||[],equipe:e.equipe||[e.motorista],km_plan:+e.km_plan||0,peso_plan:+e.peso_plan||0,h_saida_plan:e.h_saida_plan||'07:00'};
     });
     cargas.forEach(function(c){
-      LC[dia][c.carga_id]={peso_real:c.peso_real,hod_ini:c.hod_ini||'',hod_ret:c.hod_ret||'',h_saida_real:c.h_saida_real||'',h_ret_real:c.h_ret_real||'',cancelada:c.cancelada||false,ok:c.ok||false,cancel_motivo:c.obs||''};
+      LC[dia][c.carga_id]={peso_real:c.peso_real,hod_ini:c.hod_ini||'',hod_ret:c.hod_ret||'',h_saida_real:c.h_saida_real||'',h_ret_real:c.h_ret_real||'',cancelada:c.cancelada||false,ok:c.ok||false,cancel_motivo:c.obs||'',motivos:c.motivos||{}};
       var eq=D[dia].equipes[c.motorista];
       if(eq&&!eq.cargas.find(function(x){return x.id===c.carga_id;})){
         eq.cargas.push({id:c.carga_id,rota:c.rota||'',vda:c.vda||'',km_plan:+c.km_plan||0,peso_plan:+c.peso_plan||0,h_saida_plan:c.h_saida_plan||'07:00',h_ret_plan:c.h_ret_plan||null,h_saida_real:c.h_saida_real||null,h_ret_real:c.h_ret_real||null,tipo:c.tipo||'1carga'});
@@ -1048,12 +1055,13 @@ function renderEquipes(){
         var tPlanM=hSP&&hRP?hm2min(hRP)-hm2min(hSP):null,tRealM=hSR&&hRR?hm2min(hRR)-hm2min(hSR):null;
         var atSM=hSR?hm2min(hSR)-hm2min(hSP):null,atRM=hRR&&hRP?hm2min(hRR)-hm2min(hRP):null,tDif=tRealM!==null&&tPlanM!==null?tRealM-tPlanM:null;
         var pesoR=lc.peso_real?+lc.peso_real:null,pesoDif=pesoR!==null?Math.round(pesoR-c.peso_plan):null;
-        html+='<table class="pvr-table"><thead><tr><th>Indicador</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferenca</th><th></th></tr></thead><tbody>';
+        html+='<table class="pvr-table"><thead><tr><th>Indicador</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferenca</th><th>Motivo</th><th></th></tr></thead><tbody>';
         html+='<tr><td class="lbl">Saida</td><td class="r plan">'+hSP+'</td><td class="r"><input type="time" class="real-inp'+(hSR?' f':'')+'" value="'+(lc.h_saida_real||hSR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_saida_real\',this.value)"></td><td class="r"><span class="'+(atSM===null?'dif-nd':atSM>30?'dif-bad':atSM>0?'dif-warn':'dif-ok')+'">'+(atSM!==null?(atSM>0?'+':'')+min2hm(Math.abs(atSM)):'---')+'</span></td><td></td></tr>';
         html+='<tr><td class="lbl">Retorno</td><td class="r plan">'+( hRP||'---')+'</td><td class="r"><input type="time" class="real-inp'+(hRR?' f':'')+'" value="'+(lc.h_ret_real||hRR||'')+'" onchange="setCargaRet(\''+c.id+'\',\'h_ret_real\',this.value)"></td><td class="r"><span class="'+(atRM===null?'dif-nd':atRM>30?'dif-bad':atRM>0?'dif-warn':'dif-ok')+'">'+(atRM!==null?(atRM>0?'+':'')+min2hm(Math.abs(atRM)):'---')+'</span></td><td></td></tr>';
         html+='<tr><td class="lbl">Tempo exec.</td><td class="r plan">'+( tPlanM!==null?min2hm(tPlanM):'---')+'</td><td class="r" style="color:'+(tRealM!==null?'var(--tx)':'var(--tx3)')+'">'+( tRealM!==null?min2hm(tRealM):'---')+'</td><td class="r"><span class="'+(tDif===null?'dif-nd':tDif>30?'dif-bad':tDif>0?'dif-warn':'dif-ok')+'">'+(tDif!==null?(tDif>0?'+':'')+min2hm(Math.abs(tDif)):'---')+'</span></td><td></td></tr>';
         html+='<tr><td class="lbl">KM</td><td class="r plan">'+fN(c.km_plan,1)+' km</td><td class="r"><div style="display:flex;gap:3px;justify-content:flex-end;align-items:center"><input type="number" class="real-inp" placeholder="ini" style="width:60px" value="'+(lc.hod_ini||'')+'" onchange="setCargaHod(\''+c.id+'\',\'hod_ini\',this.value)"><span style="color:var(--tx3)">&#8594;</span><input type="number" class="real-inp" placeholder="fim" style="width:60px" value="'+(lc.hod_ret||'')+'" onchange="setCargaHod(\''+c.id+'\',\'hod_ret\',this.value)"></div></td>';
-        html+='<td class="r"><span class="'+(kmDif===null?'dif-nd':Math.abs(kmDif)>5?'dif-bad':'dif-ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td><td></td></tr>';
+        html+='<td class="r"><span class="'+(kmDif===null?'dif-nd':Math.abs(kmDif)>5?'dif-bad':'dif-ok')+'">'+(kmDif!==null?(kmDif>0?'+':'')+fN(kmDif,1)+' km':(kmR!==null?fN(kmR,1)+' km':'---'))+'</span></td>';
+        html+='<td>'+(kmDif!==null&&Math.abs(kmDif)>5?renderMotivoInline(c.id,'km',MOT_KM):'<span style="font-size:8px;color:var(--tx3)">—</span>')+'</td><td></td></tr>';
         html+='<tr><td class="lbl">Peso</td><td class="r plan">'+fN(c.peso_plan)+' kg</td><td class="r"><input type="number" class="real-inp" placeholder="'+fN(c.peso_plan)+'" value="'+(lc.peso_real||'')+'" oninput="setPeso(\''+c.id+'\',this.value)"></td><td class="r"><span class="'+(pesoDif===null?'dif-nd':Math.abs(pesoDif)>500?'dif-warn':'dif-ok')+'">'+(pesoDif!==null?(pesoDif>0?'+':'')+fN(pesoDif)+' kg':'---')+'</span></td><td><button class="bok '+(lc.ok?'done':'idle')+'" onclick="togCOk(\''+c.id+'\')">'+(lc.ok?'\u2713':'OK')+'</button></td></tr>';
         // Observação por carga
         var lcObs=lc.obs_carga||'';
@@ -1082,6 +1090,27 @@ function renderEquipes(){
 // ── AÇÕES ──
 function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+function getMotivosCarga(cid){return (LC[DIA]&&LC[DIA][cid]&&LC[DIA][cid].motivos)||{};}
+function togMotivoCarga(cid,tipo,m){
+  if(!DIA)return;
+  if(!LC[DIA][cid])LC[DIA][cid]={};
+  if(!LC[DIA][cid].motivos)LC[DIA][cid].motivos={};
+  LC[DIA][cid].motivos[tipo]=LC[DIA][cid].motivos[tipo]===m?'':m;
+  // Se motivo é Outros, mostrar/esconder campo observação específico
+  renderEquipes();saveLocal();sbSaveDia(DIA);
+}
+function renderMotivoInline(cid,tipo,arr){
+  var mot=getMotivosCarga(cid);
+  var sel=mot[tipo]||'';
+  var html='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">';
+  arr.forEach(function(m){
+    html+='<span style="padding:2px 7px;border-radius:4px;font-size:8px;font-weight:600;cursor:pointer;border:1px solid '+(sel===m?'var(--cy)':'rgba(255,255,255,.12)')+';background:'+(sel===m?'rgba(0,194,255,.15)':'rgba(255,255,255,.04)')+';color:'+(sel===m?'var(--cy)':'var(--tx3)')+'" onclick="togMotivoCarga(''+cid+'',''+tipo+'',''+m+'')">'+m+'</span>';
+  });
+  html+='</div>';
+  if(sel==='Outros'){html+='<input type="text" style="width:100%;margin-top:3px;background:rgba(255,255,255,.05);border:1px solid var(--b);border-radius:4px;color:var(--tx);font-size:9px;padding:3px 6px" placeholder="Descreva o motivo..." value="'+(mot[tipo+'_obs']||'')+'" onchange="setMotivoObs(''+cid+'',''+tipo+'_obs',this.value)">';}
+  return html;
+}
+function setMotivoObs(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};if(!LC[DIA][cid].motivos)LC[DIA][cid].motivos={};LC[DIA][cid].motivos[campo]=v;saveLocal();}
 function setObsCarga(cid,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].obs_carga=v;saveLocal();}
 function setMotivoEq(mot,m){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].motivo_atraso=LE[DIA][mot].motivo_atraso===m?'':m;renderEquipes();saveLocal();sbSaveDia(DIA);}
 function setObsEq(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].obs_equipe=v;saveLocal();sbSaveDia(DIA);}
