@@ -1393,7 +1393,10 @@ function importEnc(inp){
           for(var ci=row.length-1;ci>=16;ci--){if(row[ci]&&String(row[ci]).trim()){obs=String(row[ci]).trim();break;}}
           var p=qty(row[10])*3+qty(row[11])*6+qty(row[12])*11+qty(row[13])*23+qty(row[14])*45+qty(row[15])*55;
           if(!p)return;
-          if(rota.toUpperCase().indexOf('822')>=0||tipo.indexOf('CONSIG')>=0){
+          // Evento = ROTA 822 pura (sem substituição) + CONSIGNADA
+          // ROTA 822 (804) = substituindo rota 804 = rota normal
+          var isEvento=(tipo.indexOf('CONSIG')>=0&&rota.toUpperCase().indexOf('822')>=0&&!/\(\d+\)/.test(rota));
+          if(isEvento){
             totalCon+=p;
             eventos.push({rota:rota||'ROTA 822',vda:vda,motorista:nome,oc:oc,peso:p,obs:obs});
             return;
