@@ -1335,7 +1335,18 @@ function importFusion(inp){
         E.cargas.push({id:cid,rota:String(row[6]||'').trim(),vda:vda,km_plan:km,peso_plan:Math.round(peso*10)/10,h_saida_plan:hSP,h_ret_plan:hRP,h_saida_real:hSR,h_ret_real:hRR,tipo:tipo,obs:obs,interior:isInterior});
         nCargas++;
       });
-      Object.keys(diasImport).forEach(function(dia){D[dia]=diasImport[dia];if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};});
+      Object.keys(diasImport).forEach(function(dia){
+        // Preservar peso_plan_pv e peso_rotas/eventos do Encerramento se já existirem
+        var pesoPV=D[dia]&&D[dia].peso_plan_pv||0;
+        var pesoRot=D[dia]&&D[dia].peso_rotas||0;
+        var pesoEv=D[dia]&&D[dia].peso_eventos||0;
+        var obsP=LD[dia]&&LD[dia].obs_p||'';
+        D[dia]=diasImport[dia];
+        // Restaurar peso do Encerramento (não sobrescrever com 0 do Fusion)
+        if(pesoPV>0){D[dia].peso_plan_pv=pesoPV;D[dia].peso_rotas=pesoRot;D[dia].peso_eventos=pesoEv;}
+        if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};
+        if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};
+      });
       var ultimoDia=Object.keys(diasImport).sort().pop();
       st.textContent=nCargas+' cargas importadas';
       var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
