@@ -469,6 +469,11 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="kc-title" style="margin-bottom:8px">Equipes com excesso após 17:00</div>
     <div id="sup-excesso" style="font-size:10px"></div>
   </div>
+  <div class="kc" style="padding:14px;margin-bottom:12px">
+    <div class="kc-title" style="margin-bottom:8px">&#128197; Banco de horas acumulado — motoristas</div>
+    <div style="font-size:9px;color:var(--tx3);margin-bottom:8px">Limite: 2h/dia | 10h = ~1 dia de folga | Após 19h = hora extra paga</div>
+    <div id="sup-banco" style="font-size:10px"></div>
+  </div>
 </div>
 
 <!-- ANALISTA -->
@@ -966,6 +971,17 @@ function renderKPIs(){
         hbt+=' <span class="badge b-warn">'+pctAtraso+'% do excesso = atraso saida</span>';
       }
     }
+    // Banco de horas do dia
+    var maxBancoDia=nEq*120;
+    if(excessoMin>0){
+      var minBancoDia=Math.min(excessoMin,maxBancoDia);
+      var minExtraDia=Math.max(0,excessoMin-maxBancoDia);
+      hbt+='<div style="margin-top:5px">';
+      hbt+='<span class="badge b-warn">&#128197; Banco dia: +'+min2hm(minBancoDia)+'</span>';
+      if(minExtraDia>0)hbt+=' <span class="badge b-bad">&#9888; Hora extra: +'+min2hm(minExtraDia)+'</span>';
+      else hbt+=' <span class="badge b-ok">Sem hora extra</span>';
+      hbt+='</div>';
+    }
     bt.innerHTML=hbt;
   }
 
@@ -1220,7 +1236,46 @@ function encerrar(){
   var a=new Date();
   if(!LD[DIA])LD[DIA]={c_p:[],c_k:[],c_t:[]};
   LD[DIA].locked=true;LD[DIA].lock_ts=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' de '+a.toLocaleDateString('pt-BR');
-  sbSaveDia(DIA);saveLocal();buildDiaNav();selDia(DIA);
+  sbSaveDia(DIA);
+  // Calcular e salvar banco de horas ao encerrar
+  salvarBancoHoras(DIA);
+  saveLocal();buildDiaNav();selDia(DIA);
+}
+
+async function salvarBancoHoras(dia){
+  var eq=D[dia]&&D[dia].equipes||{};
+  var INICIO=hm2min('07:00'),LIMITE_BANCO=hm2min('19:00');
+  var registros=[];
+  Object.keys(eq).forEach(function(mot){
+    var cargas=(eq[mot].cargas||[]).filter(function(c){return c.tipo!=='evento';});
+    if(!cargas.length)return;
+    // Retorno real mais tardio
+    var hRRs=cargas.map(function(c){var lc=(LC[dia]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
+    if(!hRRs.length)return;
+    var hRR=Math.max.apply(null,hRRs.map(hm2min));
+    // Saída real mais cedo
+    var hSRs=cargas.map(function(c){var lc=(LC[dia]||{})[c.id]||{};return lc.h_saida_real||c.h_saida_real||null;}).filter(Boolean);
+    var hSR=hSRs.length?Math.min.apply(null,hSRs.map(hm2min)):INICIO;
+    // Calcular minutos por categoria
+    var minNorm=Math.max(0,Math.min(hRR,LIMITE)-INICIO);
+    var minBanco=Math.max(0,Math.min(hRR,LIMITE_BANCO)-LIMITE); // 17:00-19:00
+    var minExtra=Math.max(0,hRR-LIMITE_BANCO); // após 19:00
+    registros.push({
+      motorista:mot,
+      dia:dia,
+      h_saida:min2hm(hSR),
+      h_retorno:min2hm(hRR),
+      min_normais:Math.round(minNorm),
+      min_banco:Math.round(Math.min(minBanco,120)), // máx 2h de banco
+      min_extra:Math.round(minExtra+(Math.max(0,minBanco-120))), // excesso de banco vira extra
+      updated_at:new Date().toISOString()
+    });
+  });
+  if(!registros.length)return;
+  try{
+    await sbFetch('POST','/rest/v1/pvr_banco_horas?on_conflict=motorista,dia',registros);
+    console.log('Banco horas salvo:',registros.length,'motoristas');
+  }catch(e){console.warn('Banco horas erro:',e);}
 }
 
 // ── IMPORTADORES ──
@@ -1751,6 +1806,41 @@ function renderSup(){
     if(hRR>LIMITE){var exc=hRR-LIMITE;excHtml+='<div style="padding:5px 8px;border-radius:6px;margin-bottom:4px;background:var(--rdd);border:1px solid rgba(255,128,144,.2);font-size:9px">🔴 <b>'+mot+'</b> — retorno: '+min2hm(hRR)+' — excesso: <span style="color:var(--rd)">+'+min2hm(exc)+'</span></div>';}
   });
   document.getElementById('sup-excesso').innerHTML=excHtml||'<span style="color:var(--gr)">✅ Todas as equipes retornaram até 17:00</span>';
+
+  // Banco de horas acumulado
+  var bancoEl=document.getElementById('sup-banco');
+  if(bancoEl){
+    bancoEl.innerHTML='<div style="font-size:9px;color:var(--tx3)">Carregando banco acumulado...</div>';
+    fetch(SB_URL+'/rest/v1/pvr_banco_horas?select=motorista,dia,min_banco,min_extra&order=motorista,dia',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    }).then(function(r){return r.json();}).then(function(rows){
+      if(!rows||!rows.length){bancoEl.innerHTML='<span style="color:var(--tx3)">Sem dados de banco de horas</span>';return;}
+      // Agrupar por motorista
+      var banco={};
+      rows.forEach(function(r){
+        if(!banco[r.motorista])banco[r.motorista]={total_banco:0,total_extra:0,dias:0};
+        banco[r.motorista].total_banco+=(r.min_banco||0);
+        banco[r.motorista].total_extra+=(r.min_extra||0);
+        banco[r.motorista].dias++;
+      });
+      var bHtml='<table style="width:100%;font-size:9px;border-collapse:collapse">';
+      bHtml+='<tr style="color:var(--tx3)"><th style="text-align:left;padding:4px">Motorista</th><th style="text-align:right;padding:4px">Banco acum.</th><th style="text-align:right;padding:4px">Folga equiv.</th><th style="text-align:right;padding:4px">Extra pago</th><th style="text-align:right;padding:4px">Alerta</th></tr>';
+      Object.keys(banco).sort().forEach(function(mot){
+        var b=banco[mot];
+        var folga=b.total_banco/528; // 1 dia = 8h48 = 528min
+        var alerta=b.total_banco>=600?'b-bad':b.total_banco>=300?'b-warn':'b-ok';
+        var alertaTxt=b.total_banco>=600?'&#9888; Dar folga':b.total_banco>=300?'&#9651; Atenção':'OK';
+        bHtml+='<tr style="border-top:1px solid var(--b)">';
+        bHtml+='<td style="padding:4px;font-weight:700">'+mot+'</td>';
+        bHtml+='<td style="text-align:right;padding:4px;color:var(--am)">'+min2hm(b.total_banco)+'</td>';
+        bHtml+='<td style="text-align:right;padding:4px;color:var(--tx2)">'+Math.round(folga*10)/10+' dias</td>';
+        bHtml+='<td style="text-align:right;padding:4px;color:'+(b.total_extra>0?'var(--rd)':'var(--gr)')+'">'+( b.total_extra?min2hm(b.total_extra):'—')+'</td>';
+        bHtml+='<td style="text-align:right;padding:4px"><span class="badge '+alerta+'">'+alertaTxt+'</span></td>';
+        bHtml+='</tr>';
+      });
+      bancoEl.innerHTML=bHtml+'</table>';
+    }).catch(function(){bancoEl.innerHTML='<span style="color:var(--rd)">Erro ao carregar banco</span>';});
+  }
 }
 
 // ── ANALISTA ──
