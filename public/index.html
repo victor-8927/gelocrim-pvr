@@ -866,7 +866,7 @@ function renderKPIs(){
   var nEq=eqRotas.length;
 
   // CAMADA 1 — Disponível
-  var dispMin=nEq*600; // N equipes x 10h (8h48 + 1h12)
+  var dispMin=nEq*528; // N equipes x 10h (8h48 + 1h12)
   var opMin=nEq*528;   // N equipes x 8h48 operação
   var intMin=nEq*72;   // N equipes x 1h12 intervalo
 
@@ -925,7 +925,7 @@ function renderKPIs(){
   var elDisp=document.getElementById('vt-disp');
   if(elDisp)elDisp.textContent=min2hm(dispMin);
   var elDispS=document.getElementById('vt-disp-s');
-  if(elDispS)elDispS.textContent=nEq+' equipes x 10h';
+  if(elDispS)elDispS.textContent=nEq+' equipes x 8h48';
 
   // Exibir CAMADA 2 — Planejado
   var elPlan=document.getElementById('vt-plan');
@@ -1604,11 +1604,11 @@ function renderExec(){
     var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
     if(hRR){realMinEx+=hRR-hSP;nRegEx++;if(hRR<=LIMITE)nOk++;else nOv++;}
   });
-  var dispMinEx=nEq*600;
+  var dispMinEx=nEq*528;
   var elTD=document.getElementById('ex-t-disp'),elTDS=document.getElementById('ex-t-disp-s');
   var elTP=document.getElementById('ex-t-plan'),elTPS=document.getElementById('ex-t-plan-s');
   var elTR=document.getElementById('ex-t-real'),elTRS=document.getElementById('ex-t-real-s');
-  if(elTD){elTD.textContent=min2hm(dispMinEx);elTDS.textContent=nEq+' eq × 10h';}
+  if(elTD){elTD.textContent=min2hm(dispMinEx);elTDS.textContent=nEq+' eq × 8h48';}
   if(elTP){
     elTP.textContent=nPlanEx?min2hm(planMinEx):'---';
     var folgaP=dispMinEx-planMinEx;
