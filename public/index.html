@@ -495,7 +495,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <div class="port-modal" id="port-modal">
   <div class="port-box">
     <div class="port-title">&#128203; Dados da Portaria</div>
-    <div class="port-sub">Digite os dados do controle de cinta de carga. O sistema cruza pelo romaneio e preenche hodômetros e horários automaticamente.</div>
+    <div class="port-sub">Envie a foto da portaria ou preencha manualmente. O sistema cruza pelo romaneio automaticamente.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <button class="port-btn apply" onclick="document.getElementById('port-foto-inp').click()" style="background:rgba(192,132,252,.2);border-color:rgba(192,132,252,.4)">&#128247; Ler foto com IA</button>
+      <input type="file" id="port-foto-inp" accept="image/*" style="display:none" onchange="lerFotoPortaria(this)">
+      <span id="port-ocr-status" style="font-size:9px;color:var(--tx3)"></span>
+    </div>
     <div id="port-status" style="font-size:10px;color:var(--tx3);margin-bottom:8px"></div>
     <table class="port-table">
       <thead>
@@ -1466,6 +1471,86 @@ function aplicarPortaria(){
     res.textContent='❌ Nenhuma carga aplicada. '+erros.join(', ');
   }
   setTimeout(function(){fecharPortaria();},2000);
+}
+
+async function lerFotoPortaria(inp){
+  var file=inp.files[0];
+  if(!file)return;
+  var st=document.getElementById('port-ocr-status');
+  st.textContent='Lendo foto com IA...';
+  st.style.color='var(--am)';
+
+  // Converter imagem para base64
+  var base64=await new Promise(function(res,rej){
+    var reader=new FileReader();
+    reader.onload=function(e){res(e.target.result.split(',')[1]);};
+    reader.onerror=rej;
+    reader.readAsDataURL(file);
+  });
+
+  var mediaType=file.type||'image/jpeg';
+
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+            {type:'text',text:'Esta é uma planilha de controle de portaria de veículos. Extraia TODOS os dados e retorne APENAS um JSON array sem markdown, sem explicação. Cada objeto deve ter: {"romaneio":"","km_saida":"","km_retorno":"","h_saida":"","h_retorno":"","motorista":"","vda":""}. Use string vazia para campos não encontrados. Horários no formato HH:MM. KM sem pontos nem vírgulas.'}
+          ]
+        }]
+      })
+    });
+
+    var data=await resp.json();
+    var texto=data.content&&data.content[0]&&data.content[0].text||'';
+
+    // Limpar e parsear JSON
+    var jsonStr=texto.replace(/```json|```/g,'').trim();
+    var linhas=JSON.parse(jsonStr);
+
+    if(!Array.isArray(linhas)||linhas.length===0){
+      st.textContent='IA não encontrou dados na imagem';
+      st.style.color='var(--rd)';
+      return;
+    }
+
+    // Preencher tabela com os dados extraídos
+    var tbody=document.getElementById('port-tbody');
+    var rows=tbody.querySelectorAll('tr');
+
+    linhas.forEach(function(dado,i){
+      if(i>=rows.length)return;
+      var romEl=document.getElementById('pr_rom_'+i);
+      var vdaEl=document.getElementById('pr_vda_'+i);
+      var iniEl=document.getElementById('pr_ini_'+i);
+      var retEl=document.getElementById('pr_ret_'+i);
+      var hsEl=document.getElementById('pr_hs_'+i);
+      var hrEl=document.getElementById('pr_hr_'+i);
+      var motEl=document.getElementById('pr_mot_'+i);
+
+      if(romEl&&dado.romaneio){romEl.value=dado.romaneio;portCruzar(i);}
+      if(vdaEl&&dado.vda)vdaEl.value=dado.vda;
+      if(iniEl&&dado.km_saida)iniEl.value=dado.km_saida;
+      if(retEl&&dado.km_retorno)retEl.value=dado.km_retorno;
+      if(hsEl&&dado.h_saida)hsEl.value=dado.h_saida;
+      if(hrEl&&dado.h_retorno)hrEl.value=dado.h_retorno;
+    });
+
+    st.textContent='✓ '+linhas.length+' linhas extraídas pela IA — confira e aplique';
+    st.style.color='var(--gr)';
+
+  }catch(e){
+    console.error('OCR erro:',e);
+    st.textContent='Erro ao processar: '+e.message;
+    st.style.color='var(--rd)';
+  }
+  inp.value='';
 }
 
 function fecharPortaria(){
