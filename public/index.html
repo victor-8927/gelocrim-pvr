@@ -808,19 +808,20 @@ function renderKPIs(){
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
   var txtP=nOk+'/'+tot+' conf.';if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
   document.getElementById('vpr-s').textContent=txtP;
-  // Rotas vs Eventos — calcular em tempo real das cargas (excluindo canceladas)
-  var pesoRotasCalc=0,pesoEvCalc=0;
+  // Rotas vs Eventos — usar valores do Encerramento (fonte verdade)
+  // Calcular cancelamentos para abater
+  var pesoCancelRotas=0,pesoCancelEv=0;
   Object.values(eq).forEach(function(E){
     (E.cargas||[]).forEach(function(c){
       var lc=(LC[DIA]||{})[c.id]||{};
-      if(lc.cancelada)return;
-      if(c.tipo==='evento')pesoEvCalc+=c.peso_plan;
-      else pesoRotasCalc+=c.peso_plan;
+      if(!lc.cancelada)return;
+      if(c.tipo==='evento')pesoCancelEv+=c.peso_plan;
+      else pesoCancelRotas+=c.peso_plan;
     });
   });
-  // Usar calculado se disponível, senão usar do D[dia]
-  var pesoRotas=pesoRotasCalc||d.peso_rotas||0;
-  var pesoEv=pesoEvCalc||d.peso_eventos||0;
+  // Usar D[dia].peso_rotas e peso_eventos do Encerramento
+  var pesoRotas=Math.max(0,(d.peso_rotas||0)-pesoCancelRotas);
+  var pesoEv=Math.max(0,(d.peso_eventos||0)-pesoCancelEv);
   var elR=document.getElementById('vp-rotas'),elE=document.getElementById('vp-eventos');
   if(elR)elR.innerHTML=(pesoRotas?fN(pesoRotas):'---')+'<span style="font-size:9px"> kg</span>';
   if(elE)elE.innerHTML=(pesoEv?fN(pesoEv):'---')+'<span style="font-size:9px"> kg</span>';
