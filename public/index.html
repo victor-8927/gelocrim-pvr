@@ -796,15 +796,16 @@ function renderKPIs(){
   var d=D[DIA]||{},eq=d.equipes||{};
 
   // PESO
-  var pp=d.peso_plan_pv||0,pr=0,nOk=0,tot=0,pesoCan=0,nCan=0,pesoReplan=0;
+  var pp=d.peso_plan_pv||0,pr=0,nOk=0,tot=0,pesoCan=0,nCan=0;
   Object.values(eq).forEach(function(E){
     E.cargas.forEach(function(c){
       tot++;var lc=(LC[DIA]||{})[c.id]||{};
       if(lc.cancelada){pesoCan+=c.peso_plan;nCan++;return;}
-      pesoReplan+=c.peso_plan;
       if(lc.ok){pr+=(lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan);nOk++;}
     });
   });
+  // Replanejado = total do Encerramento menos cancelados
+  var pesoReplan=Math.max(0,pp-pesoCan);
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
   var txtP=nOk+'/'+tot+' conf.';if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
   document.getElementById('vpr-s').textContent=txtP;
