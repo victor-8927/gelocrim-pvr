@@ -1292,11 +1292,27 @@ function importFusion(inp){
         var cid=String(row[0]||'').trim();if(!cid||cid.toUpperCase()==='TOTAL'||!/^\d+$/.test(cid))return;
         function parseDT(v){if(!v)return null;var s=String(v).trim();var m1=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);if(m1)return{h:m1[4]+':'+m1[5],d:m1[3]+'-'+m1[2]+'-'+m1[1]};var m2=s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);if(m2)return{h:m2[4]+':'+m2[5],d:m2[1]+'-'+m2[2]+'-'+m2[3]};return null;}
         var dt=parseDT(row[11]),dtS=parseDT(row[12]),dtF=parseDT(row[13]);if(!dt)return;
-        var dia=dt.d,mot=String(row[9]||'').trim().split(' ')[0],vda=String(row[10]||'').trim().replace(' ','');
+        // Usar nome completo do motorista (não só primeiro nome)
+        var dia=dt.d,mot=String(row[9]||'').trim(),vda=String(row[10]||'').trim().replace(/ /g,'');
+        // Ignorar linha TOTAL
+        if(mot.toUpperCase()==='TOTAL'||mot==='')return;
         var km=Math.round(parseFloat(String(row[7]||'0').replace(',','.'))*10)/10;
         var peso=parseFloat(String(row[3]||'0').replace('.','').replace(',','.'));
-        var equipe=[mot];[16,17,18,19].forEach(function(ci){var aj=String(row[ci]||'').trim().split(' ')[0];if(aj&&aj!=='None'&&equipe.indexOf(aj)<0)equipe.push(aj);});
-        var hSP=dt.h,hRP=dtF?dtF.h:null,hSR=dtS?dtS.h:null,hRR=(dtS&&dtF&&dtF.h>dtS.h)?dtF.h:null;
+        var equipe=[mot];[16,17,18,19].forEach(function(ci){var aj=String(row[ci]||'').trim();if(aj&&aj!=='None'&&aj!==''&&equipe.indexOf(aj)<0)equipe.push(aj);});
+        var hSP=dt.h;
+        // h_ret_plan = DATA TERMINO mas só se for do mesmo dia e > h_saida_plan
+        var hRP=null;
+        if(dtF&&dtF.d===dia&&dtF.h>hSP)hRP=dtF.h;
+        // DATA TERMINO no dia seguinte = retorno interior (rota 811) — registrar mas não usar como plan do mesmo dia
+        var hSR=dtS?dtS.h:null;
+        // DATA SAIDA REAL inválida se < 5 min da DATA plan termino
+        if(dtS&&dtF&&dtF.d===dia){
+          var diffMin=0;
+          var sp=dtF.h.split(':'),ss=dtS.h?dtS.h.split(':'):null;
+          if(ss){diffMin=Math.abs((+sp[0]*60+ +sp[1])-(+ss[0]*60+ +ss[1]));}
+          if(diffMin<5)hSR=null; // dado inválido
+        }
+        var hRR=(hSR&&dtF&&dtF.d===dia&&dtF.h>hSP)?dtF.h:null;
         var tipo=parseInt(hSP)>=10?'recarga':'1carga';
         if(!diasImport[dia])diasImport[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:true,equipes:{}};
         var Dd=diasImport[dia];
