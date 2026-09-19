@@ -544,6 +544,11 @@ var MOT_RETORNO=['Saida atrasada - consequencia','Cliente demorou atender','Clie
 var MOT_KM=['Fora de sequencia - voltou cliente','Prioridade solicitada logistica','Cliente sem gelo - emergencial','Endereco incorreto no sistema','Desvio por via interditada','Outros'];
 var MOT_PESO=['Saco avariado - fabrica','Saco boyado - calor','Cliente recusou - produto fora padrao','Cliente fechado - fora horario','Pedido cancelado pelo cliente','Fora do horario de recebimento','Outros'];
 
+// KM médio fixo segunda-feira (sem Fusion) — calculado do painel de rotas
+var KM_SEGUNDA={
+  '801':94,'802':44,'803':121,'804':16,'805':91,'821':42,'822':0,'APOIO':60
+};
+
 // Escala fixa Verão 2026 — dia da semana (0=Dom,1=Seg,...,6=Sab)
 var ESCALA={
   '801':[1,2,3,4,5],    // Seg-Sex
@@ -739,6 +744,21 @@ function selMes(m){MES=m;buildMesTabs();buildDiaNav();var dias=Object.keys(D).fi
 async function selDia(dia){
   DIA=dia;
   if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};
+  // Segunda-feira — aplicar KM médio fixo se não tiver Fusion
+  var dt=new Date(dia+'T12:00:00');
+  var isSegunda=dt.getDay()===1;
+  if(isSegunda&&D[dia]&&(!D[dia].km_plan||D[dia].km_plan===0)){
+    var kmTotal=0;
+    Object.keys(D[dia].equipes||{}).forEach(function(mot){
+      var E=D[dia].equipes[mot];
+      var rota=E.cargas&&E.cargas[0]?E.cargas[0].rota:'';
+      var numRota=rota.replace(/[^0-9]/g,'');
+      var km=KM_SEGUNDA[numRota]||KM_SEGUNDA[rota]||60;
+      E.km_plan=km;
+      kmTotal+=km;
+    });
+    D[dia].km_plan=kmTotal;
+  }
   buildDiaNav();
   var ld=LD[dia];
   var lb=document.getElementById('lock-bar');
@@ -851,7 +871,10 @@ function renderKPIs(){
     if(hasKM){kr+=kmMot;nKM++;var dif=Math.round((kmMot-(eq[mot].km_plan||0))*10)/10;if(Math.abs(dif)>5)alerts.push(mot+': plan '+fN(eq[mot].km_plan,1)+' vs real '+fN(kmMot,1)+' km ('+(dif>0?'+':'')+fN(dif,1)+' km)');}
   });
   setV('vkp',fN(kp,1),'km');setV('vkr',kr?fN(kr,1):'---','km');
+  var dt2=new Date(DIA+'T12:00:00');
+  var isSegKPI=dt2.getDay()===1;
   document.getElementById('vkr-s').textContent=nKM?nKM+' equipes':'soma equipes';
+  document.getElementById('vkp-s')?document.getElementById('vkp-s').textContent=isSegKPI?'Media fixa (sem Fusion)':'Roteirizacao':null;
   if(kmCan>0){setV('vk-can','-'+fN(kmCan,1),'km');setV('vk-rep',fN(kmReplan,1),'km');}
   else{document.getElementById('vk-can').innerHTML='---<span class="du">km</span>';document.getElementById('vk-rep').innerHTML='---<span class="du">km</span>';}
   setBar('bkp','bkr','lkp','lkr',kmReplan||kp,kr,'#FFD166');
