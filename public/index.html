@@ -1411,8 +1411,8 @@ function importEnc(inp){
         rows.slice(hdr+1).forEach(function(row){
           var rota=String(row[0]||'').trim();
           var vda=String(row[1]||'').trim();
-          var nome=String(row[5]||'').trim();
-          var oc=String(row[7]||'').trim();
+          var nome=String(row[6]||row[5]||'').trim(); // NOME (col 6)
+          var oc=String(row[8]||row[7]||'').trim(); // Nº ROMANEIO (col 8) ou CÓD (col 7)
           var tipo=String(row[9]||'').trim().toUpperCase();
           var obs='';
           for(var ci=row.length-1;ci>=16;ci--){if(row[ci]&&String(row[ci]).trim()){obs=String(row[ci]).trim();break;}}
