@@ -1420,7 +1420,7 @@ function importEnc(inp){
           if(!p)return;
           // Evento = ROTA 822 pura (sem substituição) + CONSIGNADA
           // ROTA 822 (804) = substituindo rota 804 = rota normal
-          var isEvento=(tipo.indexOf('CONSIG')>=0&&rota.toUpperCase().indexOf('822')>=0&&!/\(\d+\)/.test(rota));
+          var isEvento=((tipo.indexOf('CONSIG')>=0||tipo.indexOf('COSIG')>=0)&&rota.toUpperCase().indexOf('822')>=0&&!/\(\d+\)/.test(rota));
           if(isEvento){
             totalCon+=p;
             eventos.push({rota:rota||'ROTA 822',vda:vda,motorista:nome,oc:oc,peso:p,obs:obs});
