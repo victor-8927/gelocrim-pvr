@@ -296,7 +296,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="kc-title">1 &#8212; Peso distribuido</div>
     <div class="duo">
       <div class="dc"><div class="dl">Total planejado</div><div class="dv" id="vpp" style="color:rgba(0,194,255,.7)">---<span class="du">kg</span></div><div class="ds">Programacao</div></div>
-      <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vpr" style="color:var(--gr)">---<span class="du">kg</span></div><div class="ds" id="vpr-s">confirme abaixo</div></div>
+      <div class="dc"><div class="dl">Realizado</div><div class="dv" id="vpr" style="color:var(--gr)">---<span class="du">kg</span></div><div class="ds" id="vpr-s">confirme abaixo</div><div id="pct-peso" style="margin-top:5px;min-height:22px"></div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
       <div class="dc-small"><div class="dl-small" style="color:var(--cy)">&#128666; Rotas</div><div class="dv-small" id="vp-rotas" style="color:var(--cy)">---<span style="font-size:9px"> kg</span></div></div>
@@ -316,7 +316,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="kc-title">2 &#8212; KM percorrido</div>
     <div class="duo">
       <div class="dc"><div class="dl">Planejado Fusion</div><div class="dv" id="vkp" style="color:var(--am)">---<span class="du">km</span></div><div class="ds">Roteirizacao</div></div>
-      <div class="dc"><div class="dl">Real hodometro</div><div class="dv" id="vkr" style="color:var(--gr)">---<span class="du">km</span></div><div class="ds" id="vkr-s">soma equipes</div></div>
+      <div class="dc"><div class="dl">Real hodometro</div><div class="dv" id="vkr" style="color:var(--gr)">---<span class="du">km</span></div><div class="ds" id="vkr-s">soma equipes</div><div id="pct-km" style="margin-top:5px;min-height:22px"></div></div>
     </div>
     <div class="duo-small">
       <div class="dc-small"><div class="dl-small" style="color:var(--am)">&#10005; Cancelado</div><div class="dv-small" id="vk-can" style="color:var(--am)">---<span style="font-size:9px"> km</span></div></div>
@@ -335,7 +335,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
       <div class="dc-small"><div class="dl-small">Disponivel</div><div class="dv-small" id="vt-disp" style="color:var(--tx2)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-disp-s">equipes x 10h</div></div>
       <div class="dc-small"><div class="dl-small">Planejado</div><div class="dv-small" id="vt-plan" style="color:rgba(192,132,252,.8)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-plan-s">Fusion</div></div>
-      <div class="dc-small"><div class="dl-small">Realizado</div><div class="dv-small" id="vt-real" style="color:var(--gr)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-real-s">atual</div></div>
+      <div class="dc-small"><div class="dl-small">Realizado</div><div class="dv-small" id="vt-real" style="color:var(--gr)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-real-s">atual</div><div id="pct-tempo" style="margin-top:5px;min-height:22px"></div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
       <div class="dc-small"><div class="dl-small" style="color:var(--am)">&#9650; Atrasos saida</div><div class="dv-small" id="vt-atraso" style="color:var(--am)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-atraso-s">soma equipes</div></div>
@@ -853,6 +853,10 @@ function renderKPIs(){
   setV('vpp',fN(pp),'kg');setV('vpr',pr?fN(pr):'---','kg');
   var txtP=nOk+'/'+tot+' conf.';if(nCan)txtP+=' | '+nCan+' cancelada(s) (-'+fN(pesoCan)+' kg)';
   document.getElementById('vpr-s').textContent=txtP;
+  // Percentual peso
+  var pctPeso=pp>0&&pr>0?Math.round(pr/pp*100):null;
+  var pctPesoEl=document.getElementById('pct-peso');
+  if(pctPesoEl)pctPesoEl.innerHTML=pctPeso!==null?'<span style="font-size:22px;font-weight:800;color:'+(pctPeso>=90?'var(--gr)':pctPeso>=70?'var(--am)':'var(--rd)')+'">'+pctPeso+'%</span><span style="font-size:9px;color:var(--tx3)"> do planejado</span>':'';
   // Rotas vs Eventos — usar valores do Encerramento (fonte verdade)
   // Calcular cancelamentos para abater
   var pesoCancelRotas=0,pesoCancelEv=0;
@@ -899,6 +903,10 @@ function renderKPIs(){
   var isSegKPI=dt2.getDay()===1;
   document.getElementById('vkr-s').textContent=nKM?nKM+' equipes':'soma equipes';
   document.getElementById('vkp-s')?document.getElementById('vkp-s').textContent=isSegKPI?'Media fixa (sem Fusion)':'Roteirizacao':null;
+  // Percentual KM
+  var pctKM=kp>0&&kr>0?Math.round(kr/kp*100):null;
+  var pctKMEl=document.getElementById('pct-km');
+  if(pctKMEl)pctKMEl.innerHTML=pctKM!==null?'<span style="font-size:22px;font-weight:800;color:'+(pctKM>=90?'var(--gr)':pctKM>=70?'var(--am)':'var(--rd)')+'">'+pctKM+'%</span><span style="font-size:9px;color:var(--tx3)"> do planejado</span>':'';
   if(kmCan>0){setV('vk-can','-'+fN(kmCan,1),'km');setV('vk-rep',fN(kmReplan,1),'km');}
   else{document.getElementById('vk-can').innerHTML='---<span class="du">km</span>';document.getElementById('vk-rep').innerHTML='---<span class="du">km</span>';}
   setBar('bkp','bkr','lkp','lkr',kmReplan||kp,kr,'#FFD166');
@@ -996,6 +1004,10 @@ function renderKPIs(){
   if(elReal)elReal.textContent=nReg?min2hm(realMin):'---';
   var elRealS=document.getElementById('vt-real-s');
   if(elRealS)elRealS.textContent=nReg+'/'+nEq+' registradas';
+  // Percentual Tempo
+  var pctTempo=dispMin>0&&realMin>0?Math.round(realMin/dispMin*100):null;
+  var pctTempoEl=document.getElementById('pct-tempo');
+  if(pctTempoEl)pctTempoEl.innerHTML=pctTempo!==null?'<span style="font-size:18px;font-weight:800;color:'+(pctTempo>=90?'var(--gr)':pctTempo>=70?'var(--am)':'var(--rd)')+'">'+pctTempo+'%</span><span style="font-size:9px;color:var(--tx3)"> do disponível</span>':'';
 
   // Exibir Atrasos e Excessos
   var elAt=document.getElementById('vt-atraso'),elAtS=document.getElementById('vt-atraso-s');
