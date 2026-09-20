@@ -1407,6 +1407,7 @@ function importEnc(inp){
         if(!LC[alvo])LC[alvo]={};
         if(!LD[alvo])LD[alvo]={c_p:[],c_k:[],c_t:[]};
         var ordemEnc=Object.keys(D[alvo].equipes).length;
+        var motAtual='',rotaAtual='';
         rows.slice(hdr+1).forEach(function(row){
           var rota=String(row[0]||'').trim();
           var vda=String(row[1]||'').trim();
@@ -1425,13 +1426,21 @@ function importEnc(inp){
             eventos.push({rota:rota||'ROTA 822',vda:vda,motorista:nome,oc:oc,peso:p,obs:obs});
             return;
           }
-          // Criar/atualizar equipe na ordem do Encerramento
-          if(nome&&tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0||tipo.indexOf('TROCA')>=0||tipo.indexOf('BONIF')>=0){
-            if(nome&&!D[alvo].equipes[nome]){
+          // Motorista principal = primeiro nome PRE-VENDA da rota atual
+          // Ajudantes (TROCAS sem rota nova) somam ao motorista atual
+          if(rota&&nome&&(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)){
+            motAtual=nome; rotaAtual=rota;
+            if(!D[alvo].equipes[nome]){
               D[alvo].equipes[nome]={cargas:[],vdas:vda?[vda]:[],equipe:[nome],km_plan:0,peso_plan:0,h_saida_plan:'07:00',ordem:ordemEnc++};
             }
-            if(nome&&vda&&D[alvo].equipes[nome]&&D[alvo].equipes[nome].vdas.indexOf(vda)<0)
-              D[alvo].equipes[nome].vdas.push(vda);
+          }
+          // Somar peso ao motorista atual (mesmo que seja linha de ajudante/troca)
+          var motRef=motAtual||nome;
+          if(motRef&&D[alvo].equipes[motRef]){
+            if(nome&&nome!==motRef&&D[alvo].equipes[motRef].equipe.indexOf(nome)<0)
+              D[alvo].equipes[motRef].equipe.push(nome);
+            if(vda&&D[alvo].equipes[motRef].vdas.indexOf(vda)<0)
+              D[alvo].equipes[motRef].vdas.push(vda);
           }
           if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)totalPV+=p;
           else if(tipo.indexOf('TROCA')>=0)totalRec+=p;
