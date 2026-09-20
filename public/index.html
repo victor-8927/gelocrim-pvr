@@ -771,13 +771,16 @@ async function selDia(dia){
   // Segunda-feira — aplicar KM médio fixo se não tiver Fusion
   var dt=new Date(dia+'T12:00:00');
   var isSegunda=dt.getDay()===1;
-  if(isSegunda&&D[dia]&&(!D[dia].km_plan||D[dia].km_plan===0)){
+  var isSabado=dt.getDay()===6;
+  var semFusion=(isSegunda||isSabado)&&D[dia]&&(!D[dia].km_plan||D[dia].km_plan===0);
+  if(semFusion){
+    var kmTable=isSegunda?KM_SEGUNDA:KM_SABADO;
     var kmTotal=0;
     Object.keys(D[dia].equipes||{}).forEach(function(mot){
       var E=D[dia].equipes[mot];
       var rota=E.cargas&&E.cargas[0]?E.cargas[0].rota:'';
       var numRota=rota.replace(/[^0-9]/g,'');
-      var km=KM_SEGUNDA[numRota]||KM_SEGUNDA[rota]||60;
+      var km=kmTable[numRota]||kmTable[rota]||60;
       E.km_plan=km;
       kmTotal+=km;
     });
@@ -906,7 +909,7 @@ function renderKPIs(){
   });
   setV('vkp',fN(kp,1),'km');setV('vkr',kr?fN(kr,1):'---','km');
   var dt2=new Date(DIA+'T12:00:00');
-  var isSegKPI=dt2.getDay()===1;
+  var isSegKPI=dt2.getDay()===1||dt2.getDay()===6;
   document.getElementById('vkr-s').textContent=nKM?nKM+' equipes':'soma equipes';
   document.getElementById('vkp-s')?document.getElementById('vkp-s').textContent=isSegKPI?'Media fixa (sem Fusion)':'Roteirizacao':null;
   // Percentual KM
