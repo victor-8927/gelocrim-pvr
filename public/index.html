@@ -856,7 +856,12 @@ function renderKPIs(){
   // Percentual peso
   var pctPeso=pp>0&&pr>0?Math.round(pr/pp*100):null;
   var pctPesoEl=document.getElementById('pct-peso');
-  if(pctPesoEl)pctPesoEl.innerHTML=pctPeso!==null?'<span style="font-size:22px;font-weight:800;color:'+(pctPeso>=90?'var(--gr)':pctPeso>=70?'var(--am)':'var(--rd)')+'">'+pctPeso+'%</span><span style="font-size:9px;color:var(--tx3)"> do planejado</span>':'';
+  if(pctPesoEl&&pctPeso!==null){
+    // Verde ≥98% | Amarelo ≥85% | Vermelho <85%
+    var corPeso=pctPeso>=98?'var(--gr)':pctPeso>=85?'var(--am)':'var(--rd)';
+    var txtPeso=pctPeso>=98?'✓ '+pctPeso+'% entregue':pctPeso>=85?'⚠ '+pctPeso+'% entregue':'✕ '+pctPeso+'% entregue';
+    pctPesoEl.innerHTML='<span style="font-size:18px;font-weight:800;color:'+corPeso+'">'+txtPeso+'</span>';
+  } else if(pctPesoEl) pctPesoEl.innerHTML='';
   // Rotas vs Eventos — usar valores do Encerramento (fonte verdade)
   // Calcular cancelamentos para abater
   var pesoCancelRotas=0,pesoCancelEv=0;
@@ -906,7 +911,14 @@ function renderKPIs(){
   // Percentual KM
   var pctKM=kp>0&&kr>0?Math.round(kr/kp*100):null;
   var pctKMEl=document.getElementById('pct-km');
-  if(pctKMEl)pctKMEl.innerHTML=pctKM!==null?'<span style="font-size:22px;font-weight:800;color:'+(pctKM>=90?'var(--gr)':pctKM>=70?'var(--am)':'var(--rd)')+'">'+pctKM+'%</span><span style="font-size:9px;color:var(--tx3)"> do planejado</span>':'';
+  if(pctKMEl&&kp>0&&kr>0){
+    var difKM=kr-kp;
+    // Verde ≤10km | Vermelho >10km
+    var corKM=Math.abs(difKM)<=10?'var(--gr)':'var(--rd)';
+    var sinalKM=difKM>0?'+':'';
+    var txtKM=Math.abs(difKM)<=10?'✓ Dentro do planejado':'✕ '+sinalKM+fN(difKM,1)+' km vs planejado';
+    pctKMEl.innerHTML='<span style="font-size:14px;font-weight:800;color:'+corKM+'">'+txtKM+'</span>';
+  } else if(pctKMEl) pctKMEl.innerHTML='';
   if(kmCan>0){setV('vk-can','-'+fN(kmCan,1),'km');setV('vk-rep',fN(kmReplan,1),'km');}
   else{document.getElementById('vk-can').innerHTML='---<span class="du">km</span>';document.getElementById('vk-rep').innerHTML='---<span class="du">km</span>';}
   setBar('bkp','bkr','lkp','lkr',kmReplan||kp,kr,'#FFD166');
@@ -1004,10 +1016,24 @@ function renderKPIs(){
   if(elReal)elReal.textContent=nReg?min2hm(realMin):'---';
   var elRealS=document.getElementById('vt-real-s');
   if(elRealS)elRealS.textContent=nReg+'/'+nEq+' registradas';
-  // Percentual Tempo
-  var pctTempo=dispMin>0&&realMin>0?Math.round(realMin/dispMin*100):null;
+  // Semáforo Tempo
+  // Verde = todos dentro de 17:00
+  // Amarelo = excesso dentro de 2h/equipe (≤ 19:00)
+  // Vermelho = alguma equipe passou das 19:00
+  var LIMITE_19=nEq*120; // máx 2h por equipe em minutos
+  var excessoTotal=Math.max(0,realMin-dispMin); // minutos além do disponível (17:00)
   var pctTempoEl=document.getElementById('pct-tempo');
-  if(pctTempoEl)pctTempoEl.innerHTML=pctTempo!==null?'<span style="font-size:18px;font-weight:800;color:'+(pctTempo>=90?'var(--gr)':pctTempo>=70?'var(--am)':'var(--rd)')+'">'+pctTempo+'%</span><span style="font-size:9px;color:var(--tx3)"> do disponível</span>':'';
+  if(pctTempoEl&&nReg>0){
+    var corTempo,txtTempo;
+    if(excessoTotal===0){
+      corTempo='var(--gr)';txtTempo='✓ Todas dentro de 17:00';
+    } else if(excessoTotal<=LIMITE_19){
+      corTempo='var(--am)';txtTempo='⚠ +'+min2hm(excessoTotal)+' — dentro da tolerância';
+    } else {
+      corTempo='var(--rd)';txtTempo='✕ +'+min2hm(excessoTotal)+' — passou das 19:00';
+    }
+    pctTempoEl.innerHTML='<span style="font-size:13px;font-weight:800;color:'+corTempo+'">'+txtTempo+'</span>';
+  } else if(pctTempoEl) pctTempoEl.innerHTML='';
 
   // Exibir Atrasos e Excessos
   var elAt=document.getElementById('vt-atraso'),elAtS=document.getElementById('vt-atraso-s');
