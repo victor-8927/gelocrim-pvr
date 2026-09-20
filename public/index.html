@@ -1427,16 +1427,32 @@ function importEnc(inp){
             return;
           }
           // Motorista principal = primeiro nome PRE-VENDA da rota atual
-          // Ajudantes (TROCAS sem rota nova) somam ao motorista atual
+          // Nova rota = reset do motorista atual
           if(rota&&nome&&(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)){
-            motAtual=nome; rotaAtual=rota;
-            if(!D[alvo].equipes[nome]){
-              D[alvo].equipes[nome]={cargas:[],vdas:vda?[vda]:[],equipe:[nome],km_plan:0,peso_plan:0,h_saida_plan:'07:00',ordem:ordemEnc++};
+            // Se mudou a rota ou é primeira vez, criar nova carga
+            if(rota!==rotaAtual||!motAtual){
+              motAtual=nome; rotaAtual=rota;
+              // Criar equipe se não existe
+              if(!D[alvo].equipes[nome]){
+                D[alvo].equipes[nome]={cargas:[],vdas:vda?[vda]:[],equipe:[nome],km_plan:0,peso_plan:0,h_saida_plan:'07:00',ordem:ordemEnc++};
+              }
+              // Criar carga para esta rota com romaneio como ID
+              var cidEnc=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+D[alvo].equipes[nome].cargas.length);
+              var isInt=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].some(function(kw){return obs.toUpperCase().indexOf(kw)>=0||rota.toUpperCase().indexOf(kw)>=0;});
+              D[alvo].equipes[nome].cargas.push({id:cidEnc,rota:rota,vda:vda||'',km_plan:0,peso_plan:0,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:D[alvo].equipes[nome].cargas.length===0?'1carga':'recarga',obs:obs,interior:isInt});
+            } else {
+              // Mesma rota, novo bloco PRE-VENDA = recarga do mesmo motorista
+              motAtual=nome;
+              var cidEnc2=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+D[alvo].equipes[nome].cargas.length);
+              var isInt2=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].some(function(kw){return obs.toUpperCase().indexOf(kw)>=0||rota.toUpperCase().indexOf(kw)>=0;});
+              D[alvo].equipes[nome].cargas.push({id:cidEnc2,rota:rota,vda:vda||'',km_plan:0,peso_plan:0,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:'recarga',obs:obs,interior:isInt2});
             }
           }
-          // Somar peso ao motorista atual (mesmo que seja linha de ajudante/troca)
+          // Acumular peso na última carga do motorista atual
           var motRef=motAtual||nome;
           if(motRef&&D[alvo].equipes[motRef]){
+            var cargas=D[alvo].equipes[motRef].cargas;
+            if(cargas.length>0)cargas[cargas.length-1].peso_plan=Math.round((cargas[cargas.length-1].peso_plan+p)*10)/10;
             if(nome&&nome!==motRef&&D[alvo].equipes[motRef].equipe.indexOf(nome)<0)
               D[alvo].equipes[motRef].equipe.push(nome);
             if(vda&&D[alvo].equipes[motRef].vdas.indexOf(vda)<0)
