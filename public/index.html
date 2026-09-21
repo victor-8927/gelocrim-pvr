@@ -845,7 +845,7 @@ function renderKPIs(){
   // PESO
   var pp=d.peso_plan_pv||0,pr=0,nOk=0,tot=0,pesoCan=0,nCan=0;
   Object.values(eq).forEach(function(E){
-    E.cargas.forEach(function(c){
+    (E.cargas||[]).forEach(function(c){
       tot++;var lc=(LC[DIA]||{})[c.id]||{};
       if(lc.cancelada){pesoCan+=c.peso_plan;nCan++;return;}
       if(lc.ok){pr+=(lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan);nOk++;}
@@ -1513,13 +1513,13 @@ function importEnc(inp){
                 D[alvo].equipes[nome]={cargas:[],vdas:vda?[vda]:[],equipe:[nome],km_plan:0,peso_plan:0,h_saida_plan:'07:00',ordem:ordemEnc++};
               }
               // Criar carga para esta rota com romaneio como ID
-              var cidEnc=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+D[alvo].equipes[nome].cargas.length);
+              var cidEnc=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+(D[alvo].equipes[nome]&&D[alvo].equipes[nome].cargas?D[alvo].equipes[nome].cargas.length:0));
               var isInt=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].some(function(kw){return obs.toUpperCase().indexOf(kw)>=0||rota.toUpperCase().indexOf(kw)>=0;});
               D[alvo].equipes[nome].cargas.push({id:cidEnc,rota:rota,vda:vda||'',km_plan:0,peso_plan:0,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:D[alvo].equipes[nome].cargas.length===0?'1carga':'recarga',obs:obs,interior:isInt});
             } else {
               // Mesma rota, novo bloco PRE-VENDA = recarga do mesmo motorista
               motAtual=nome;
-              var cidEnc2=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+D[alvo].equipes[nome].cargas.length);
+              var cidEnc2=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+(D[alvo].equipes[nome]&&D[alvo].equipes[nome].cargas?D[alvo].equipes[nome].cargas.length:0));
               var isInt2=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].some(function(kw){return obs.toUpperCase().indexOf(kw)>=0||rota.toUpperCase().indexOf(kw)>=0;});
               D[alvo].equipes[nome].cargas.push({id:cidEnc2,rota:rota,vda:vda||'',km_plan:0,peso_plan:0,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:'recarga',obs:obs,interior:isInt2});
             }
@@ -1790,7 +1790,7 @@ function renderExec(){
   var d=D[DIA],eq=d.equipes||{};
   // Peso
   var pp=d.peso_plan_pv||0,pr=0,pesoCan=0;
-  Object.values(eq).forEach(function(E){E.cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);});});
+  Object.values(eq).forEach(function(E){(E.cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);});});
   var pctP=pp>0?Math.round(pr/pp*100):0;
   var elPP=document.getElementById('ex-peso-plan');
   if(elPP)elPP.innerHTML=fN(pp)+'<span style="font-size:10px"> kg</span>';
@@ -1867,7 +1867,7 @@ function renderGer(){
   document.getElementById('ger-causa').innerHTML=(chips.length?'<b>Motivos registrados:</b> '+chips.join(', ')+'<br>':'<span style="color:var(--am)">⚠️ Nenhum motivo registrado para o dia</span>')+(obs?'<br><i>'+obs+'</i>':'');
   // PVR
   var pp=d.peso_plan_pv||0,pr=0,pesoCan=0,kp=d.km_plan||0,kr=0;
-  Object.values(eq).forEach(function(E){E.cargas.forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);if(c.tipo!=='evento'&&lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
+  Object.values(eq).forEach(function(E){(E.cargas||[]).forEach(function(c){var lc=(LC[DIA]||{})[c.id]||{};if(lc.cancelada){pesoCan+=c.peso_plan;return;}if(lc.ok)pr+=(lc.peso_real?+lc.peso_real:c.peso_plan);if(c.tipo!=='evento'&&lc.hod_ini&&lc.hod_ret&&+lc.hod_ret>+lc.hod_ini)kr+=Math.round((+lc.hod_ret-+lc.hod_ini)*10)/10;});});
   // Calcular tempo para gerência
   var nEqG=0,planMinG=0,realMinG=0,nPlanG=0,nRegG=0;
   Object.keys(eq).forEach(function(mot){
