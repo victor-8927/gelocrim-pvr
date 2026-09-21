@@ -1409,10 +1409,19 @@ function importFusion(inp){
         var tipo=parseInt(hSP)>=10?'recarga':'1carga';
         if(!diasImport[dia])diasImport[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:true,equipes:{}};
         var Dd=diasImport[dia];
-        // Se equipe já existe (criada pelo Encerramento), manter ordem e motorista
-        // Se não existe, criar com dados do Fusion
-        if(!Dd.equipes[mot])Dd.equipes[mot]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP,ordem:Object.keys(Dd.equipes).length};
-        var E=Dd.equipes[mot];
+        // Fusion NUNCA cria equipe nova se já existe pelo Encerramento
+        // Tentar cruzar pelo romaneio para encontrar motorista correto
+        var motEnc=null;
+        if(D[dia]&&D[dia].equipes){
+          Object.keys(D[dia].equipes).forEach(function(m){
+            (D[dia].equipes[m].cargas||[]).forEach(function(c){
+              if(String(c.id)===String(cid))motEnc=m;
+            });
+          });
+        }
+        var motFinal=motEnc||mot; // usar nome do Encerramento se encontrou
+        if(!Dd.equipes[motFinal])Dd.equipes[motFinal]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP,ordem:Object.keys(Dd.equipes).length};
+        var E=Dd.equipes[motFinal];
         if(hSP<E.h_saida_plan)E.h_saida_plan=hSP;
         if(vda&&E.vdas.indexOf(vda)<0)E.vdas.push(vda);
         E.km_plan=Math.round((E.km_plan+km)*10)/10;E.peso_plan=Math.round((E.peso_plan+peso)*10)/10;
