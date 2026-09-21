@@ -1505,9 +1505,10 @@ function importEnc(inp){
           // Motorista principal = primeiro nome PRE-VENDA da rota atual
           // Nova rota = reset do motorista atual
           if(rota&&nome&&(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)){
-            // Se mudou a rota ou é primeira vez, criar nova carga
-            if(rota!==rotaAtual||!motAtual){
-              motAtual=nome; rotaAtual=rota;
+            // Nova equipe = mudou a rota OU mudou VDA (mesmo quando rota igual ex: ROTA 822(804) aparece 2x)
+            var rotaVdaKey=rota+'|'+vda;
+            if(rotaVdaKey!==rotaAtual||!motAtual){
+              motAtual=nome; rotaAtual=rotaVdaKey;
               // Criar equipe se não existe
               if(!D[alvo].equipes[nome]){
                 D[alvo].equipes[nome]={cargas:[],vdas:vda?[vda]:[],equipe:[nome],km_plan:0,peso_plan:0,h_saida_plan:'07:00',ordem:ordemEnc++};
@@ -1517,7 +1518,7 @@ function importEnc(inp){
               var isInt=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].some(function(kw){return obs.toUpperCase().indexOf(kw)>=0||rota.toUpperCase().indexOf(kw)>=0;});
               D[alvo].equipes[nome].cargas.push({id:cidEnc,rota:rota,vda:vda||'',km_plan:0,peso_plan:0,h_saida_plan:'07:00',h_ret_plan:null,h_saida_real:null,h_ret_real:null,tipo:D[alvo].equipes[nome].cargas.length===0?'1carga':'recarga',obs:obs,interior:isInt});
             } else {
-              // Mesma rota, novo bloco PRE-VENDA = recarga do mesmo motorista
+              // Mesma rota+VDA, novo bloco PRE-VENDA = recarga do mesmo motorista
               motAtual=nome;
               var cidEnc2=oc||('ENC'+alvo.replace(/-/g,'')+'_'+nome.split(' ')[0]+'_'+(D[alvo].equipes[nome]&&D[alvo].equipes[nome].cargas?D[alvo].equipes[nome].cargas.length:0));
               var isInt2=['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].some(function(kw){return obs.toUpperCase().indexOf(kw)>=0||rota.toUpperCase().indexOf(kw)>=0;});
