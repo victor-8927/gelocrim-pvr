@@ -1529,7 +1529,13 @@ function importEnc(inp){
           var motRef=motAtual||nome;
           if(motRef&&D[alvo].equipes[motRef]){
             var cargas=D[alvo].equipes[motRef].cargas;
-            if(cargas.length>0)cargas[cargas.length-1].peso_plan=Math.round((cargas[cargas.length-1].peso_plan+p)*10)/10;
+            if(cargas.length>0){
+              cargas[cargas.length-1].peso_plan=Math.round((cargas[cargas.length-1].peso_plan+p)*10)/10;
+              // Se essa linha tem romaneio e a carga ainda tem ID gerado (ENC...), atualizar para o romaneio real
+              if(oc&&cargas[cargas.length-1].id.indexOf('ENC')===0){
+                cargas[cargas.length-1].id=oc;
+              }
+            }
             if(nome&&nome!==motRef&&D[alvo].equipes[motRef].equipe.indexOf(nome)<0)
               D[alvo].equipes[motRef].equipe.push(nome);
             if(vda&&D[alvo].equipes[motRef].vdas.indexOf(vda)<0)
