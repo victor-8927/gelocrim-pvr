@@ -184,6 +184,47 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
 .btn-eq{padding:8px 18px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--b);background:var(--s1);color:var(--tx2);font-family:var(--ff)}
 .btn-eq.done{background:var(--grd);color:var(--gr);border-color:rgba(77,255,195,.3)}
 .nodata{text-align:center;padding:30px;color:var(--tx3);font-size:12px}
+/* BLOCO DE ANOTAÇÕES — CADERNO */
+.obs-caderno{
+  width:100%;
+  min-height:140px;
+  background:repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    rgba(0,194,255,.12) 31px,
+    rgba(0,194,255,.12) 32px
+  );
+  background-color:rgba(255,255,255,.04);
+  border:1px solid rgba(0,194,255,.2);
+  border-left:4px solid rgba(0,194,255,.4);
+  border-radius:0 8px 8px 0;
+  color:var(--tx);
+  font-family:'Arial',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  line-height:32px;
+  padding:8px 12px 8px 16px;
+  resize:vertical;
+  outline:none;
+  letter-spacing:.01em;
+}
+.obs-caderno:focus{
+  border-color:rgba(0,194,255,.5);
+  background-color:rgba(255,255,255,.06);
+}
+.obs-caderno::placeholder{
+  color:rgba(255,255,255,.25);
+  font-weight:400;
+  font-style:italic;
+}
+.obs-label{
+  font-size:9px;
+  font-weight:700;
+  color:var(--cy);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  margin-bottom:5px;
+}
 .port-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
 .port-modal.open{display:flex}
 .port-box{background:#0D2A3A;border:1px solid var(--b);border-radius:14px;padding:20px;width:min(700px,96vw);max-height:90vh;overflow-y:auto}
@@ -309,7 +350,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="bar-lbl"><span id="lpp">---</span><span id="lpr">---</span></div>
     <div class="bar-wrap"><div class="bar-bg" id="bpp" style="background:rgba(0,194,255,.3)"></div><div class="bar-r" id="bpr" style="background:#4DFFC3"></div></div>
     <div id="bdg-p"></div>
-    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-p"></div><textarea class="mobs" id="obs-p" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
+    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-p"></div><div class="obs-label">📝 Anotações — Peso</div><textarea class="obs-caderno" id="obs-p" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea></div>
   </div>
   <!-- KM -->
   <div class="kc k">
@@ -326,7 +367,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="bar-wrap"><div class="bar-bg" id="bkp" style="background:rgba(255,209,102,.3)"></div><div class="bar-r" id="bkr" style="background:#FFD166"></div></div>
     <div id="km-alerts"></div>
     <div id="bdg-k"></div>
-    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-k"></div><textarea class="mobs" id="obs-k" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
+    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-k"></div><div class="obs-label">📝 Anotações — KM</div><textarea class="obs-caderno" id="obs-k" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea></div>
   </div>
   <!-- TEMPO -->
   <div class="kc t">
@@ -343,7 +384,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div id="bdg-t" style="margin-bottom:6px"></div>
     <div id="vt-analise" style="margin-bottom:6px"></div>
-    <div class="motivo"><div class="ml">Motivo atraso saida</div><div class="chips" id="ch-t"></div><textarea class="mobs" id="obs-t" rows="2" placeholder="Observacao..." onchange="saveObs()"></textarea></div>
+    <div class="motivo"><div class="ml">Motivo atraso saida</div><div class="chips" id="ch-t"></div><div class="obs-label">📝 Anotações — Tempo</div><textarea class="obs-caderno" id="obs-t" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea></div>
   </div>
 </div>
 
