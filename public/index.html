@@ -1626,9 +1626,13 @@ function portCruzar(i){
   if(!val)return;
   var eq=D[DIA].equipes||{};
   var encontrado=null;
+  // Suporta múltiplos romaneios separados por / (ex: 29101/29102)
+  var roms=val.replace(/\s/g,'').split('/').map(function(r){return r.trim();});
   Object.keys(eq).forEach(function(mot){
     (eq[mot].cargas||[]).forEach(function(c){
-      if(String(c.id)===val)encontrado={c:c,mot:mot};
+      roms.forEach(function(r){
+        if(String(c.id)===r)encontrado={c:c,mot:mot};
+      });
     });
   });
   var motEl=document.getElementById('pr_mot_'+i);
@@ -1657,12 +1661,15 @@ function aplicarPortaria(){
     var hs=(document.getElementById('pr_hs_'+i)||{}).value||'';
     var hr=(document.getElementById('pr_hr_'+i)||{}).value||'';
     var vda=(document.getElementById('pr_vda_'+i)||{}).value||'';
-    // Buscar carga pelo romaneio
+    // Buscar carga pelo romaneio (suporta múltiplos: 29101/29102)
     var eq=D[DIA].equipes||{};
     var encontrado=null;
+    var romsAp=rom.trim().replace(/\s/g,'').split('/').map(function(r){return r.trim();});
     Object.keys(eq).forEach(function(mot){
       (eq[mot].cargas||[]).forEach(function(c){
-        if(String(c.id)===rom.trim())encontrado={c:c,mot:mot};
+        romsAp.forEach(function(r){
+          if(String(c.id)===r)encontrado={c:c,mot:mot};
+        });
       });
     });
     if(!encontrado){erros.push('Romaneio '+rom+' não encontrado');return;}
