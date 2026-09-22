@@ -1667,15 +1667,30 @@ function portCruzar(i){
   if(!val)return;
   var eq=D[DIA].equipes||{};
   var encontrado=null;
-  // Suporta múltiplos romaneios separados por / (ex: 29101/29102)
-  var roms=val.replace(/\s/g,'').split('/').map(function(r){return r.trim();});
+  var roms=val.replace(/\s/g,'').split('/').map(function(r){return r.trim();}).filter(Boolean);
+
+  // 1. Cruzar por romaneio
   Object.keys(eq).forEach(function(mot){
     (eq[mot].cargas||[]).forEach(function(c){
       roms.forEach(function(r){
-        if(String(c.id)===r)encontrado={c:c,mot:mot};
+        if(!encontrado&&r&&String(c.id)===r)encontrado={c:c,mot:mot};
       });
     });
   });
+
+  // 2. Cruzar por VDA se não encontrou
+  if(!encontrado){
+    var vdaEl=document.getElementById('pr_vda_'+i);
+    var vdaVal=vdaEl?vdaEl.value.replace(/[^a-z0-9]/gi,'').toLowerCase():'';
+    if(vdaVal){
+      Object.keys(eq).forEach(function(mot){
+        var E=eq[mot];
+        if(!encontrado&&E.vdas&&E.vdas.some(function(v){return String(v).replace(/[^a-z0-9]/gi,'').toLowerCase()===vdaVal;})){
+          encontrado={c:E.cargas&&E.cargas[0]?E.cargas[0]:null,mot:mot};
+        }
+      });
+    }
+  };
   var motEl=document.getElementById('pr_mot_'+i);
   if(encontrado){
     rom.classList.add('ok');rom.classList.remove('err');
@@ -1702,17 +1717,42 @@ function aplicarPortaria(){
     var hs=(document.getElementById('pr_hs_'+i)||{}).value||'';
     var hr=(document.getElementById('pr_hr_'+i)||{}).value||'';
     var vda=(document.getElementById('pr_vda_'+i)||{}).value||'';
-    // Buscar carga pelo romaneio (suporta múltiplos: 29101/29102)
+    // Cruzamento inteligente: romaneio → VDA → motorista+rota
     var eq=D[DIA].equipes||{};
     var encontrado=null;
-    var romsAp=rom.trim().replace(/\s/g,'').split('/').map(function(r){return r.trim();});
+    var romsAp=rom.trim().replace(/\s/g,'').split('/').map(function(r){return r.trim();}).filter(Boolean);
+    var vdaAp=(document.getElementById('pr_vda_'+i)||{}).value||'';
+    var motAp=(document.getElementById('pr_mot_'+i)||{}).textContent||'';
+
+    // 1. Cruzar por romaneio
     Object.keys(eq).forEach(function(mot){
       (eq[mot].cargas||[]).forEach(function(c){
         romsAp.forEach(function(r){
-          if(String(c.id)===r)encontrado={c:c,mot:mot};
+          if(!encontrado&&r&&String(c.id)===r)encontrado={c:c,mot:mot};
         });
       });
     });
+
+    // 2. Se não encontrou por romaneio, cruzar por VDA
+    if(!encontrado&&vdaAp){
+      Object.keys(eq).forEach(function(mot){
+        var E=eq[mot];
+        if(!encontrado&&E.vdas&&E.vdas.some(function(v){return String(v).replace(/[^a-z0-9]/gi,'').toLowerCase()===vdaAp.replace(/[^a-z0-9]/gi,'').toLowerCase();})){
+          encontrado={c:E.cargas&&E.cargas[0]?E.cargas[0]:null,mot:mot};
+        }
+      });
+    }
+
+    // 3. Se não encontrou por VDA, cruzar por nome do motorista (primeiro nome)
+    if(!encontrado&&motAp){
+      var primeiroNomeAp=motAp.trim().split(' ')[0].toUpperCase();
+      Object.keys(eq).forEach(function(mot){
+        if(!encontrado&&mot.toUpperCase().indexOf(primeiroNomeAp)>=0){
+          var E=eq[mot];
+          encontrado={c:E.cargas&&E.cargas[0]?E.cargas[0]:null,mot:mot};
+        }
+      });
+    }
     if(!encontrado){erros.push('Romaneio '+rom+' não encontrado');return;}
     var cid=encontrado.c.id;
     if(!LC[DIA][cid])LC[DIA][cid]={};
