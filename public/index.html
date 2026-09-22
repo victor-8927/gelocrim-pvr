@@ -1549,7 +1549,7 @@ function importEnc(inp){
           }
           // Motorista principal = primeiro nome PRE-VENDA da rota atual
           // Nova rota = reset do motorista atual
-          if(rota&&nome&&(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)){
+          if(rota&&nome&&(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0||tipo.indexOf('MANIFESTO')>=0)){
             // Nova equipe = mudou a rota OU mudou VDA (mesmo quando rota igual ex: ROTA 822(804) aparece 2x)
             var rotaVdaKey=rota+'|'+vda;
             if(rotaVdaKey!==rotaAtual||!motAtual){
@@ -1586,7 +1586,7 @@ function importEnc(inp){
             if(vda&&D[alvo].equipes[motRef].vdas.indexOf(vda)<0)
               D[alvo].equipes[motRef].vdas.push(vda);
           }
-          if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0)totalPV+=p;
+          if(tipo.indexOf('PRE-VENDA')>=0||tipo.indexOf('PRÉ-VENDA')>=0||tipo.indexOf('MANIFESTO')>=0)totalPV+=p;
           else if(tipo.indexOf('TROCA')>=0)totalRec+=p;
           else if(tipo.indexOf('BONIF')>=0)totalBon+=p;
           else totalPV+=p;
