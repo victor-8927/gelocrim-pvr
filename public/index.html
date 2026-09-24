@@ -1308,6 +1308,22 @@ function renderEquipes(){
 // ── AÇÕES ──
 function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+// Normaliza nome para cruzamento — usa primeiro nome como chave
+function normNome(n){
+  if(!n)return '';
+  return String(n).trim().toUpperCase().split(' ')[0];
+}
+// Buscar equipe existente pelo primeiro nome do motorista
+function findEquipe(alvo, nome){
+  if(!D[alvo]||!D[alvo].equipes)return null;
+  var primeiroNome=normNome(nome);
+  var keys=Object.keys(D[alvo].equipes);
+  for(var i=0;i<keys.length;i++){
+    if(normNome(keys[i])===primeiroNome)return keys[i];
+  }
+  return null;
+}
+
 function getMotivosCarga(cid){return (LC[DIA]&&LC[DIA][cid]&&LC[DIA][cid].motivos)||{};}
 function togMotivoCarga(cid,tipo,m){
   if(!DIA)return;
@@ -1464,7 +1480,7 @@ function importFusion(inp){
             });
           });
         }
-        var motFinal=motEnc||mot; // usar nome do Encerramento se encontrou
+        var motFinal=motEnc||(findEquipe(dia,mot)||mot); // usar nome do Encerramento se encontrou
         if(!Dd.equipes[motFinal])Dd.equipes[motFinal]={cargas:[],vdas:[],equipe:equipe,km_plan:0,peso_plan:0,h_saida_plan:hSP,ordem:Object.keys(Dd.equipes).length};
         var E=Dd.equipes[motFinal];
         if(hSP<E.h_saida_plan)E.h_saida_plan=hSP;
@@ -1554,8 +1570,10 @@ function importEnc(inp){
             var rotaVdaKey=rota+'|'+vda;
             if(rotaVdaKey!==rotaAtual||!motAtual){
               motAtual=nome; rotaAtual=rotaVdaKey;
-              // Criar equipe se não existe
-              if(!D[alvo].equipes[nome]){
+              // Criar equipe se não existe — verificar por primeiro nome para evitar duplicar MIRIAN / MIRIAN DOS SANTOS SILVA
+              var nomeExist=findEquipe(alvo,nome);
+              if(nomeExist){motAtual=nomeExist;} // usar nome já cadastrado
+              else if(!D[alvo].equipes[nome]){
                 D[alvo].equipes[nome]={cargas:[],vdas:vda?[vda]:[],equipe:[nome],km_plan:0,peso_plan:0,h_saida_plan:'07:00',ordem:ordemEnc++};
               }
               // Criar carga para esta rota com romaneio como ID
