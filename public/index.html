@@ -1186,7 +1186,13 @@ function renderEquipes(){
     var isTer=isTerceirizado(mot);
     var nomeExib=mot.replace(/\s*\(T\)\s*/gi,'').trim();
     var badgeTer=isTer?'<span style="font-size:8px;background:rgba(255,166,0,.2);color:#FFA500;border:1px solid rgba(255,166,0,.4);border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px">TERC.</span>':'';
-    html+='<div class="eq-top"><div><div class="eq-nome">'+nomeExib+badgeTer+'</div><div class="eq-sub">VDA: '+(E.vdas||[]).join(', ')+' | '+(E.equipe||[]).join(' / ')+'</div></div>';
+    // Formatar membros da equipe com badge (T) nos terceirizados
+    var membros=(E.equipe||[]).map(function(m){
+      var mTer=isTerceirizado(m);
+      var mNome=m.replace(/\s*\(T\)\s*/gi,'').trim();
+      return mNome+(mTer?' <span style="font-size:7px;background:rgba(255,166,0,.2);color:#FFA500;border:1px solid rgba(255,166,0,.4);border-radius:3px;padding:0 4px;font-weight:700">T</span>':'');
+    }).join(' / ');
+    html+='<div class="eq-top"><div><div class="eq-nome">'+nomeExib+badgeTer+'</div><div class="eq-sub">VDA: '+(E.vdas||[]).join(', ')+' | '+membros+'</div></div>';
     html+='<div><div class="eq-ret-lbl">Retorno vs 17:00</div><div class="eq-ret-val '+(hRetUltReal?(isOver?'over':'ok'):'nd')+'">'+(hRetUltReal||'---')+(isOver?' (+'+min2hm(extrasMin)+')':hRetUltReal?' \u2713':'')+'</div></div></div>';
     html+='<div class="eq-sumario">';
     html+='<div class="eq-sum-item"><div class="eq-sum-l">Saida plan./real</div><div class="eq-sum-v" style="color:var(--tx2)">'+hIniPlan+'</div><div class="eq-sum-v" style="color:'+(hSaida1aReal?(atSaidaMin>15?'var(--am)':'var(--gr)'):'var(--tx3)')+'">'+( hSaida1aReal||'---')+'</div><div class="eq-sum-d dif-'+(atSaidaMin===null?'nd':atSaidaMin>30?'bad':atSaidaMin>0?'warn':'ok')+'">'+(atSaidaMin!==null?(atSaidaMin>0?'+':'')+min2hm(Math.abs(atSaidaMin)):'--')+'</div></div>';
