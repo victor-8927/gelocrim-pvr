@@ -471,81 +471,172 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <!-- DASHBOARD NOVO -->
 <div id="page-dash" style="display:none;padding:0 2px">
-  <div class="dash-page">
-    <div class="dash-header">
-      <div class="dash-header-title">📊 Dashboard — GELOCRIM PVR</div>
-      <div class="dash-header-sub" id="dash-sub">Setembro 2026</div>
-    </div>
-    <div class="dash-per-sel">
-      <button class="dash-per-btn on" id="dp-mes" onclick="setDashPer('mes')">Mês</button>
-      <button class="dash-per-btn" id="dp-s1" onclick="setDashPer('s1')">Sem 1</button>
-      <button class="dash-per-btn" id="dp-s2" onclick="setDashPer('s2')">Sem 2</button>
-      <button class="dash-per-btn" id="dp-s3" onclick="setDashPer('s3')">Sem 3</button>
-      <button class="dash-per-btn" id="dp-s4" onclick="setDashPer('s4')">Sem 4</button>
-      <button class="dash-per-btn" id="dp-q1" onclick="setDashPer('q1')">1ª Quinz</button>
-      <button class="dash-per-btn" id="dp-q2" onclick="setDashPer('q2')">2ª Quinz</button>
-    </div>
-    <!-- 3 KPIs principais -->
-    <div class="dash-kpi3">
-      <div class="dash-kpi-card p">
-        <div class="dash-kpi-lbl">📦 Volume distribuído</div>
-        <div class="dash-kpi-main" id="dk-peso-real" style="color:var(--cy)">---</div>
-        <div class="dash-kpi-sub" id="dk-peso-plan">de --- planejados</div>
-        <div class="dash-kpi-pct" id="dk-peso-pct">---%</div>
-      </div>
-      <div class="dash-kpi-card k">
-        <div class="dash-kpi-lbl">🚗 KM percorrido</div>
-        <div class="dash-kpi-main" id="dk-km-real" style="color:var(--am)">---</div>
-        <div class="dash-kpi-sub" id="dk-km-plan">de --- planejados</div>
-        <div class="dash-kpi-pct" id="dk-km-pct">--- km desvio</div>
-      </div>
-      <div class="dash-kpi-card t">
-        <div class="dash-kpi-lbl">⏱️ Tempo operacional</div>
-        <div class="dash-kpi-main" id="dk-t-ok" style="color:var(--gr)">---</div>
-        <div class="dash-kpi-sub" id="dk-t-sub">dias dentro do limite</div>
-        <div class="dash-kpi-pct" id="dk-t-pct">--- dias críticos</div>
-      </div>
-    </div>
 
-    <!-- SEÇÃO VOLUME -->
-    <div class="dash-sec">
-      <div class="dash-sec-title" style="color:var(--cy)">📦 Volume — dia a dia</div>
-      <div id="dk-peso-dias"></div>
-      <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Causas de desvio</div>
-      <div id="dk-peso-causas"><div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div></div>
+  <!-- HEADER -->
+  <div style="padding:10px 0 8px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:15px;font-weight:900;color:var(--tx)">📊 Dashboard</div>
+      <div style="font-size:9px;color:var(--tx3);margin-top:2px" id="dash-periodo-label">Carregando...</div>
     </div>
-
-    <!-- SEÇÃO KM -->
-    <div class="dash-sec">
-      <div class="dash-sec-title" style="color:var(--am)">🚗 KM — dia a dia</div>
-      <div id="dk-km-dias"></div>
-      <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Causas de desvio</div>
-      <div id="dk-km-causas"><div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div></div>
-    </div>
-
-    <!-- SEÇÃO TEMPO -->
-    <div class="dash-sec">
-      <div class="dash-sec-title" style="color:var(--gr)">⏱️ Tempo — dia a dia</div>
-      <div class="dash-t-boxes">
-        <div class="dash-t-box" style="border-top:2px solid var(--gr)">
-          <div class="dash-t-num" id="dk-t-verde" style="color:var(--gr)">0</div>
-          <div class="dash-t-lbl">✓ Até 17:00</div>
-        </div>
-        <div class="dash-t-box" style="border-top:2px solid var(--am)">
-          <div class="dash-t-num" id="dk-t-amarelo" style="color:var(--am)">0</div>
-          <div class="dash-t-lbl">⚠ Até 19:00</div>
-        </div>
-        <div class="dash-t-box" style="border-top:2px solid var(--rd)">
-          <div class="dash-t-num" id="dk-t-vermelho" style="color:var(--rd)">0</div>
-          <div class="dash-t-lbl">✕ Após 19:00</div>
-        </div>
-      </div>
-      <div id="dk-t-dias"></div>
-      <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Causas de atraso</div>
-      <div id="dk-t-causas"><div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div></div>
-    </div>
+    <div style="font-size:9px;color:var(--tx3)" id="dash-updated">↑ Sync</div>
   </div>
+
+  <!-- SELETOR DE PERÍODO -->
+  <div style="display:flex;gap:6px;margin-bottom:14px">
+    <button class="dash-per-btn on" id="dp-7d" onclick="setDashPer('7d')">7 dias</button>
+    <button class="dash-per-btn" id="dp-15d" onclick="setDashPer('15d')">15 dias</button>
+    <button class="dash-per-btn" id="dp-mes" onclick="setDashPer('mes')">Mês</button>
+  </div>
+
+  <!-- ════════════════════════════════ -->
+  <!-- 📦 VOLUME                        -->
+  <!-- ════════════════════════════════ -->
+  <div style="background:var(--s1);border-radius:14px;padding:14px;margin-bottom:12px;border-top:3px solid #00C2FF">
+
+    <!-- Título seção -->
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#00C2FF;margin-bottom:12px">📦 Volume Distribuído</div>
+
+    <!-- KPIs linha -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:rgba(0,194,255,.07);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">Planejado</div>
+        <div id="dv-plan" style="font-size:18px;font-weight:900;color:rgba(0,194,255,.8);font-family:var(--mo)">---</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:2px">kg total</div>
+      </div>
+      <div style="background:rgba(77,255,195,.07);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">Realizado</div>
+        <div id="dv-real" style="font-size:18px;font-weight:900;color:#4DFFC3;font-family:var(--mo)">---</div>
+        <div id="dv-pct-sub" style="font-size:8px;margin-top:2px">---</div>
+      </div>
+      <div style="background:rgba(255,100,100,.07);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">Não entregue</div>
+        <div id="dv-diff" style="font-size:18px;font-weight:900;color:#FF6464;font-family:var(--mo)">---</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:2px">kg perdidos</div>
+      </div>
+    </div>
+
+    <!-- Barra de progresso geral -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--tx3);margin-bottom:5px">
+        <span>Progresso geral do período</span>
+        <span id="dv-pct-label" style="font-weight:700">---%</span>
+      </div>
+      <div style="background:rgba(255,255,255,.08);border-radius:6px;height:12px;overflow:hidden">
+        <div id="dv-barra" style="height:100%;border-radius:6px;background:linear-gradient(90deg,#00C2FF,#4DFFC3);width:0%;transition:width .8s ease"></div>
+      </div>
+    </div>
+
+    <!-- Gráfico pizza SVG -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      <svg id="dv-pizza" width="90" height="90" viewBox="0 0 90 90" style="flex-shrink:0">
+        <circle cx="45" cy="45" r="38" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+        <path id="dv-pizza-real" d="" fill="#4DFFC3" opacity=".9"/>
+        <path id="dv-pizza-can" d="" fill="#FFD166" opacity=".9"/>
+        <path id="dv-pizza-diff" d="" fill="#FF6464" opacity=".9"/>
+        <circle cx="45" cy="45" r="22" fill="var(--s1)"/>
+        <text x="45" y="49" text-anchor="middle" fill="var(--tx)" font-size="11" font-weight="900" id="dv-pizza-pct">--</text>
+      </svg>
+      <div style="flex:1;font-size:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><div style="width:10px;height:10px;border-radius:2px;background:#4DFFC3;flex-shrink:0"></div><span style="color:var(--tx2)">Entregue: <b id="dv-leg-real" style="color:#4DFFC3">---</b></span></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><div style="width:10px;height:10px;border-radius:2px;background:#FFD166;flex-shrink:0"></div><span style="color:var(--tx2)">Cancelado: <b id="dv-leg-can" style="color:#FFD166">---</b></span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:#FF6464;flex-shrink:0"></div><span style="color:var(--tx2)">Não entregue: <b id="dv-leg-diff" style="color:#FF6464">---</b></span></div>
+      </div>
+    </div>
+
+    <!-- Barras dia a dia -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Evolução diária</div>
+    <div id="dv-dias" style="margin-bottom:14px"></div>
+
+    <!-- Ranking motoristas por peso -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🏆 Ranking — Peso entregue</div>
+    <div id="dv-rank-mot" style="margin-bottom:14px"></div>
+
+    <!-- Causas desvio volume -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">⚠️ Causas de desvio</div>
+    <div id="dv-causas"><div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div></div>
+  </div>
+
+  <!-- ════════════════════════════════ -->
+  <!-- 🚗 KM                            -->
+  <!-- ════════════════════════════════ -->
+  <div style="background:var(--s1);border-radius:14px;padding:14px;margin-bottom:12px;border-top:3px solid #FFD166">
+
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#FFD166;margin-bottom:12px">🚗 KM Percorrido</div>
+
+    <!-- KPIs KM -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:rgba(255,209,102,.07);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">Planejado</div>
+        <div id="dk-plan" style="font-size:18px;font-weight:900;color:#FFD166;font-family:var(--mo)">---</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:2px">km</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">Realizado</div>
+        <div id="dk-real" style="font-size:18px;font-weight:900;color:var(--tx);font-family:var(--mo)">---</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:2px">km</div>
+      </div>
+      <div style="background:rgba(255,100,100,.07);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">Desvio</div>
+        <div id="dk-desv" style="font-size:18px;font-weight:900;font-family:var(--mo)">---</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:2px">km excesso</div>
+      </div>
+    </div>
+
+    <!-- Barras KM dia a dia -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Desvio diário</div>
+    <div id="dk-dias" style="margin-bottom:14px"></div>
+
+    <!-- Ranking motoristas KM -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🚨 Maior excesso de KM</div>
+    <div id="dk-rank-mot" style="margin-bottom:14px"></div>
+
+    <!-- Causas KM -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">⚠️ Causas de desvio</div>
+    <div id="dk-causas"><div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div></div>
+  </div>
+
+  <!-- ════════════════════════════════ -->
+  <!-- ⏱️ TEMPO                         -->
+  <!-- ════════════════════════════════ -->
+  <div style="background:var(--s1);border-radius:14px;padding:14px;margin-bottom:12px;border-top:3px solid #4DFFC3">
+
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4DFFC3;margin-bottom:12px">⏱️ Tempo Operacional</div>
+
+    <!-- KPIs Tempo -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:rgba(77,255,195,.1);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#4DFFC3;font-family:var(--mo)" id="dt-ok">0</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:4px">dias ✓ 17:00</div>
+      </div>
+      <div style="background:rgba(255,209,102,.1);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#FFD166;font-family:var(--mo)" id="dt-am">0</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:4px">dias ⚠ 19:00</div>
+      </div>
+      <div style="background:rgba(255,100,100,.1);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#FF6464;font-family:var(--mo)" id="dt-rd">0</div>
+        <div style="font-size:8px;color:var(--tx3);margin-top:4px">dias ✕ crítico</div>
+      </div>
+    </div>
+
+    <!-- Linha do tempo visual -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Linha do tempo</div>
+    <div id="dt-linha" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:14px"></div>
+
+    <!-- Ranking atraso saída -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🐌 Maior atraso na saída</div>
+    <div id="dt-rank-saida" style="margin-bottom:14px"></div>
+
+    <!-- Ranking retorno tardio -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🌙 Retorno mais tardio</div>
+    <div id="dt-rank-ret" style="margin-bottom:14px"></div>
+
+    <!-- Causas atraso -->
+    <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">⚠️ Causas de atraso</div>
+    <div id="dt-causas"><div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div></div>
+  </div>
+
 </div>
+
 
 <!-- EXECUTIVO -->
 <div id="page-exec" style="display:none">
@@ -1571,6 +1662,46 @@ function getDashDias(p){
 function fKG(n){if(!n||n===0)return '---'; if(n>=1000000)return (n/1000000).toFixed(1)+' Mt'; if(n>=1000)return (n/1000).toFixed(1)+' t'; return n.toFixed(0)+' kg';}
 function fKM(n){return n?n.toFixed(0)+' km':'---';}
 
+function getDashDias(p){
+  var hoje = new Date();
+  var todos = Object.keys(D).filter(function(d){return D[d];}).sort().reverse();
+  if(p==='7d') return todos.slice(0,7).reverse();
+  if(p==='15d') return todos.slice(0,15).reverse();
+  // mes = mes atual
+  return Object.keys(D).filter(function(d){return d.startsWith(MES)&&D[d];}).sort();
+}
+
+function setDashPer(p){
+  DASH_PER=p;
+  ['7d','15d','mes'].forEach(function(k){
+    var b=document.getElementById('dp-'+k);
+    if(b)b.classList.toggle('on',k===p);
+  });
+  renderDashboard();
+}
+
+function fT(n){if(!n)return '---';if(n>=1000000)return (n/1000000).toFixed(1)+'Mt';if(n>=1000)return (n/1000).toFixed(1)+'t';return Math.round(n).toLocaleString('pt-BR')+'kg';}
+
+function pizzaPath(cx,cy,r,start,end,color){
+  if(end-start>=360)end=start+359.99;
+  var s=start*Math.PI/180,e=end*Math.PI/180;
+  var x1=cx+r*Math.cos(s),y1=cy+r*Math.sin(s);
+  var x2=cx+r*Math.cos(e),y2=cy+r*Math.sin(e);
+  var lg=(end-start)>180?1:0;
+  return 'M '+cx+' '+cy+' L '+x1+' '+y1+' A '+r+' '+r+' 0 '+lg+' 1 '+x2+' '+y2+' Z';
+}
+
+function barItem(label,val,max,cor,extra){
+  var pct=max>0?Math.round(val/max*100):0;
+  return '<div style="margin-bottom:7px">'+
+    '<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">'+
+    '<span style="color:var(--tx2)">'+label+'</span>'+
+    '<span style="color:'+cor+';font-weight:700">'+extra+'</span></div>'+
+    '<div style="background:rgba(255,255,255,.07);border-radius:4px;height:7px;overflow:hidden">'+
+    '<div style="width:'+pct+'%;height:100%;background:'+cor+';border-radius:4px;transition:width .6s"></div>'+
+    '</div></div>';
+}
+
 function renderDashboard(){
   var dias = getDashDias(DASH_PER);
   if(!dias.length) return;
@@ -1701,25 +1832,209 @@ function renderDashboard(){
   });
   setHTML('dk-t-dias',tHTML);
 
-  // ── CAUSAS ──
-  function renderCausas(causas, elId, cor){
-    var total=Object.values(causas).reduce(function(a,b){return a+b;},0);
-    if(!total){setHTML(elId,'<div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div>');return;}
-    var html='';
-    Object.keys(causas).sort(function(a,b){return causas[b]-causas[a];}).forEach(function(c){
-      if(!causas[c])return;
-      var pct=Math.round(causas[c]/total*100);
-      html+='<div class="dash-causa-item">'+
-        '<span class="dash-causa-lbl">'+c+'</span>'+
-        '<div class="dash-causa-bar"><div class="dash-causa-fill" style="width:'+pct+'%;background:'+cor+'"></div></div>'+
-        '<span class="dash-causa-pct" style="color:'+cor+'">'+pct+'%</span>'+
-        '</div>';
+  // ──────────────────────────────
+  // VOLUME
+  // ──────────────────────────────
+  var pctG=totalPlan>0?Math.round(totalReal/totalPlan*100):0;
+  var corG=pctG>=95?'#4DFFC3':pctG>=90?'#FFD166':'#FF6464';
+
+  var setText=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  var setHTML=function(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;};
+
+  setText('dv-plan',fT(totalPlan));
+  setText('dv-real',fT(totalReal));
+  setText('dv-diff',fT(Math.max(0,totalPlan-totalReal)));
+  var pSub=document.getElementById('dv-pct-sub');
+  if(pSub){pSub.textContent=pctG+'% entregue';pSub.style.color=corG;pSub.style.fontWeight='700';}
+  var barra=document.getElementById('dv-barra');
+  if(barra){barra.style.width=pctG+'%';barra.style.background=pctG>=95?'linear-gradient(90deg,#00C2FF,#4DFFC3)':pctG>=90?'linear-gradient(90deg,#FFD166,#FF9A3C)':'linear-gradient(90deg,#FF6464,#FF3A3A)';}
+  setText('dv-pct-label',pctG+'%');
+
+  // Pizza
+  var grauReal=totalPlan>0?totalReal/totalPlan*360:0;
+  var grauCan=totalPlan>0?totalCan/totalPlan*360:0;
+  var grauDiff=360-grauReal-grauCan;
+  var p1=document.getElementById('dv-pizza-real');
+  var p2=document.getElementById('dv-pizza-can');
+  var p3=document.getElementById('dv-pizza-diff');
+  if(p1)p1.setAttribute('d',pizzaPath(45,45,38,0,grauReal,'#4DFFC3'));
+  if(p2)p2.setAttribute('d',pizzaPath(45,45,38,grauReal,grauReal+grauCan,'#FFD166'));
+  if(p3&&grauDiff>0)p3.setAttribute('d',pizzaPath(45,45,38,grauReal+grauCan,360,'#FF6464'));
+  setText('dv-pizza-pct',pctG+'%');
+  setText('dv-leg-real',fT(totalReal));
+  setText('dv-leg-can',fT(totalCan));
+  setText('dv-leg-diff',fT(Math.max(0,totalPlan-totalReal-totalCan)));
+
+  // Dias volume
+  var maxPP=Math.max.apply(null,diasDados.map(function(d){return d.pp||0;}));
+  var dvDias='';
+  diasDados.forEach(function(d){
+    var pct=d.pct||0;
+    var cor=pct>=95?'#4DFFC3':pct>=90?'#FFD166':'#FF6464';
+    var w=maxPP>0?Math.round((d.pr||0)/maxPP*100):0;
+    var dt=d.dia.substring(5).replace('-','/');
+    dvDias+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">'+
+      '<span style="font-size:9px;color:var(--tx3);min-width:40px">'+dt+'</span>'+
+      '<div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">'+
+      '<div style="width:'+w+'%;height:100%;background:'+cor+';border-radius:3px"></div></div>'+
+      '<span style="font-size:9px;font-weight:700;color:'+cor+';min-width:35px;text-align:right">'+pct+'%</span>'+
+      '</div>';
+  });
+  setHTML('dv-dias',dvDias||'<div style="font-size:10px;color:var(--tx3)">Sem dados</div>');
+
+  // Ranking motoristas por peso
+  var rankMot={};
+  diasDados.forEach(function(d){
+    var eq=D[d.dia]?D[d.dia].equipes||{}:{};
+    Object.keys(eq).forEach(function(mot){
+      (eq[mot].cargas||[]).forEach(function(c){
+        var lc=(LC[d.dia]||{})[c.id]||{};
+        if(lc.ok){
+          var p=lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan;
+          rankMot[mot]=(rankMot[mot]||0)+p;
+        }
+      });
     });
-    setHTML(elId,html);
-  }
-  renderCausas(causasP,'dk-peso-causas','#FF6464');
-  renderCausas(causasK,'dk-km-causas','#FFD166');
-  renderCausas(causasT,'dk-t-causas','#4DFFC3');
+  });
+  var maxRankV=Math.max.apply(null,Object.values(rankMot).concat([1]));
+  var rankVHtml=Object.keys(rankMot).sort(function(a,b){return rankMot[b]-rankMot[a];}).slice(0,5).map(function(m,i){
+    var icone=i===0?'🥇':i===1?'🥈':i===2?'🥉':'  ';
+    return barItem(icone+' '+m.split(' ')[0],rankMot[m],maxRankV,'#4DFFC3',fT(rankMot[m]));
+  }).join('');
+  setHTML('dv-rank-mot',rankVHtml||'<div style="font-size:10px;color:var(--tx3)">Sem dados confirmados</div>');
+
+  // Causas volume
+  var totCP=Object.values(causasP).reduce(function(a,b){return a+b;},0);
+  var cpHTML=totCP?Object.keys(causasP).filter(function(c){return causasP[c]>0;}).sort(function(a,b){return causasP[b]-causasP[a];}).map(function(c){
+    return barItem(c,causasP[c],totCP,'#FF6464',Math.round(causasP[c]/totCP*100)+'% ('+causasP[c]+'x)');
+  }).join(''):'<div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div>';
+  setHTML('dv-causas',cpHTML);
+
+  // ──────────────────────────────
+  // KM
+  // ──────────────────────────────
+  var difKtot=kmReal-kmPlan;
+  var corKtot=Math.abs(difKtot/Math.max(dias.length,1))<=10?'#4DFFC3':Math.abs(difKtot/Math.max(dias.length,1))<=20?'#FFD166':'#FF6464';
+  setText('dk-plan',kmPlan>0?kmPlan.toFixed(0)+' km':'---');
+  setText('dk-real',kmReal>0?kmReal.toFixed(0)+' km':'---');
+  var dkEl=document.getElementById('dk-desv');
+  if(dkEl){dkEl.textContent=(difKtot>=0?'+':'')+difKtot.toFixed(0)+' km';dkEl.style.color=corKtot;}
+
+  // Dias KM
+  var dkDias='';
+  diasDados.forEach(function(d){
+    var dif=d.difK;
+    var cor=Math.abs(dif)<=10?'#4DFFC3':Math.abs(dif)<=20?'#FFD166':'#FF6464';
+    var w=Math.min(100,Math.abs(dif)/50*100);
+    var dt=d.dia.substring(5).replace('-','/');
+    dkDias+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">'+
+      '<span style="font-size:9px;color:var(--tx3);min-width:40px">'+dt+'</span>'+
+      '<div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">'+
+      '<div style="width:'+w+'%;height:100%;background:'+cor+';border-radius:3px"></div></div>'+
+      '<span style="font-size:9px;font-weight:700;color:'+cor+';min-width:55px;text-align:right">'+(d.kr>0?(dif>=0?'+':'')+dif.toFixed(0)+' km':'sem dado')+'</span>'+
+      '</div>';
+  });
+  setHTML('dk-dias',dkDias||'<div style="font-size:10px;color:var(--tx3)">Sem dados</div>');
+
+  // Ranking KM excesso
+  var rankKM={};
+  diasDados.forEach(function(d){
+    var eq=D[d.dia]?D[d.dia].equipes||{}:{};
+    Object.keys(eq).forEach(function(mot){
+      var ekp=eq[mot].km_plan||0,ekr=0;
+      (eq[mot].cargas||[]).forEach(function(c){
+        var lc=(LC[d.dia]||{})[c.id]||{};
+        if(lc.hod_ini&&lc.hod_ret)ekr+=(+lc.hod_ret-+lc.hod_ini);
+      });
+      if(ekr>0)rankKM[mot]=(rankKM[mot]||0)+(ekr-ekp);
+    });
+  });
+  var maxRankK=Math.max.apply(null,Object.values(rankKM).map(Math.abs).concat([1]));
+  var rankKHTML=Object.keys(rankKM).filter(function(m){return rankKM[m]>0;}).sort(function(a,b){return rankKM[b]-rankKM[a];}).slice(0,5).map(function(m){
+    return barItem('⚠ '+m.split(' ')[0],Math.abs(rankKM[m]),maxRankK,'#FFD166','+'+rankKM[m].toFixed(0)+' km');
+  }).join('');
+  setHTML('dk-rank-mot',rankKHTML||'<div style="font-size:10px;color:var(--tx3)">Sem dados de hodômetro</div>');
+
+  // Causas KM
+  var totCK=Object.values(causasK).reduce(function(a,b){return a+b;},0);
+  var ckHTML=totCK?Object.keys(causasK).filter(function(c){return causasK[c]>0;}).sort(function(a,b){return causasK[b]-causasK[a];}).map(function(c){
+    return barItem(c,causasK[c],totCK,'#FFD166',Math.round(causasK[c]/totCK*100)+'% ('+causasK[c]+'x)');
+  }).join(''):'<div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div>';
+  setHTML('dk-causas',ckHTML);
+
+  // ──────────────────────────────
+  // TEMPO
+  // ──────────────────────────────
+  setText('dt-ok',diasOk);
+  setText('dt-am',diasAm);
+  setText('dt-rd',diasRd);
+
+  // Linha do tempo visual
+  var ltHTML='';
+  diasDados.forEach(function(d){
+    var cor=d.semT==='gr'?'#4DFFC3':d.semT==='am'?'#FFD166':'#FF6464';
+    var dt=d.dia.substring(8)+'/'+d.dia.substring(5,7);
+    ltHTML+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px">'+
+      '<div style="width:28px;height:28px;border-radius:6px;background:'+cor+';opacity:.15;display:flex;align-items:center;justify-content:center">'+
+      '<div style="width:10px;height:10px;border-radius:50%;background:'+cor+'"></div></div>'+
+      '<span style="font-size:7px;color:var(--tx3)">'+dt+'</span></div>';
+  });
+  setHTML('dt-linha',ltHTML||'<div style="font-size:10px;color:var(--tx3)">Sem dados</div>');
+
+  // Ranking atraso saída
+  var rankSaida={};
+  diasDados.forEach(function(d){
+    var eq=D[d.dia]?D[d.dia].equipes||{}:{};
+    Object.keys(eq).forEach(function(mot){
+      var leSaida=(LE[d.dia]||{})[mot]||{};
+      if(leSaida.h_saida_real){
+        var p=leSaida.h_saida_real.split(':');
+        var real=parseInt(p[0])*60+parseInt(p[1]||0);
+        var plan=7*60;
+        var atraso=real-plan;
+        if(atraso>0)rankSaida[mot]=(rankSaida[mot]||0)+atraso;
+      }
+    });
+  });
+  var maxRS=Math.max.apply(null,Object.values(rankSaida).concat([1]));
+  var rsSHTML=Object.keys(rankSaida).sort(function(a,b){return rankSaida[b]-rankSaida[a];}).slice(0,5).map(function(m){
+    var min=rankSaida[m];
+    var hm=(Math.floor(min/60)>0?Math.floor(min/60)+'h':'')+(min%60)+'min';
+    return barItem('🕐 '+m.split(' ')[0],min,maxRS,'#FFD166','+'+hm);
+  }).join('');
+  setHTML('dt-rank-saida',rsSHTML||'<div style="font-size:10px;color:var(--tx3)">Sem dados de saída</div>');
+
+  // Ranking retorno tardio
+  var rankRet={};
+  diasDados.forEach(function(d){
+    var eq=D[d.dia]?D[d.dia].equipes||{}:{};
+    Object.keys(eq).forEach(function(mot){
+      var leSaida=(LE[d.dia]||{})[mot]||{};
+      if(leSaida.h_ret_real){
+        var p=leSaida.h_ret_real.split(':');
+        var real=parseInt(p[0])*60+parseInt(p[1]||0);
+        if(real>17*60)rankRet[mot]=(rankRet[mot]||0)+(real-17*60);
+      }
+    });
+  });
+  var maxRR=Math.max.apply(null,Object.values(rankRet).concat([1]));
+  var rrHTML=Object.keys(rankRet).sort(function(a,b){return rankRet[b]-rankRet[a];}).slice(0,5).map(function(m){
+    var min=rankRet[m];
+    var hm=(Math.floor(min/60)>0?Math.floor(min/60)+'h':'')+(min%60)+'min';
+    return barItem('🌙 '+m.split(' ')[0],min,maxRR,'#FF6464','+'+hm+' após 17h');
+  }).join('');
+  setHTML('dt-rank-ret',rrHTML||'<div style="font-size:10px;color:var(--tx3)">Sem dados de retorno</div>');
+
+  // Causas tempo
+  var totCT=Object.values(causasT).reduce(function(a,b){return a+b;},0);
+  var ctHTML=totCT?Object.keys(causasT).filter(function(c){return causasT[c]>0;}).sort(function(a,b){return causasT[b]-causasT[a];}).map(function(c){
+    return barItem(c,causasT[c],totCT,'#4DFFC3',Math.round(causasT[c]/totCT*100)+'% ('+causasT[c]+'x)');
+  }).join(''):'<div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div>';
+  setHTML('dt-causas',ctHTML);
+
+  // Label período
+  var labels={'7d':'Últimos 7 dias','15d':'Últimos 15 dias','mes':'Mês '+MES};
+  setText('dash-periodo-label',labels[DASH_PER]||DASH_PER);
 }
 
 // ── DASHBOARD PERÍODO ──
