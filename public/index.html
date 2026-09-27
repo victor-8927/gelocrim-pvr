@@ -1167,12 +1167,13 @@ async function selDia(dia){
   buildDiaNav();
 }
 function showPage(p){
-  ['lanc','exec','ger','sup','anal'].forEach(function(id){
+  ['lanc','dash','exec','ger','sup','anal'].forEach(function(id){
     var pg=document.getElementById('page-'+id);
     var nb=document.getElementById('nav-'+id);
     if(pg)pg.style.display=p===id?'':'none';
     if(nb)nb.classList.toggle('active',p===id);
   });
+  if(p==='dash')renderDashboard();
   if(p==='exec')renderExec();
   if(p==='ger')renderGer();
   if(p==='sup')renderSup();
