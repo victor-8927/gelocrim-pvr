@@ -225,6 +225,23 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
   letter-spacing:.1em;
   margin-bottom:5px;
 }
+/* DASHBOARD PERÍODO */
+.per-selector{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.per-btn{padding:5px 12px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--b);background:rgba(255,255,255,.05);color:var(--tx3);font-family:var(--ff)}
+.per-btn.active{background:rgba(0,194,255,.2);color:var(--cy);border-color:rgba(0,194,255,.4)}
+.dash-section{background:var(--s1);border:1px solid var(--b);border-radius:12px;padding:14px;margin-bottom:12px}
+.dash-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dash-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.dash-kpi-box{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;text-align:center}
+.dash-kpi-lbl{font-size:8px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;letter-spacing:.05em}
+.dash-kpi-val{font-size:22px;font-weight:800;font-family:var(--mo);line-height:1}
+.dash-kpi-sub{font-size:9px;color:var(--tx3);margin-top:4px}
+.dash-bar-row{margin-bottom:8px}
+.dash-bar-lbl{display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px}
+.dash-bar-track{background:rgba(255,255,255,.08);border-radius:4px;height:8px;overflow:hidden}
+.dash-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.dash-dia-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:10px}
+.dash-dia-semaforo{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .port-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
 .port-modal.open{display:flex}
 .port-box{background:#0D2A3A;border:1px solid var(--b);border-radius:14px;padding:20px;width:min(700px,96vw);max-height:90vh;overflow-y:auto}
@@ -420,6 +437,19 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <!-- EXECUTIVO -->
 <div id="page-exec" style="display:none">
+  <!-- SELETOR DE PERÍODO -->
+  <div class="per-selector">
+    <button class="per-btn active" id="per-dia" onclick="setPeriodo('dia')">📅 Dia atual</button>
+    <button class="per-btn" id="per-s1" onclick="setPeriodo('s1')">Semana 1</button>
+    <button class="per-btn" id="per-s2" onclick="setPeriodo('s2')">Semana 2</button>
+    <button class="per-btn" id="per-s3" onclick="setPeriodo('s3')">Semana 3</button>
+    <button class="per-btn" id="per-s4" onclick="setPeriodo('s4')">Semana 4</button>
+    <button class="per-btn" id="per-q1" onclick="setPeriodo('q1')">1ª Quinzena</button>
+    <button class="per-btn" id="per-q2" onclick="setPeriodo('q2')">2ª Quinzena</button>
+    <button class="per-btn" id="per-mes" onclick="setPeriodo('mes')">Mês completo</button>
+  </div>
+  <!-- VIEW DIA (existente) -->
+  <div id="exec-view-dia">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
     <div class="kc p" style="padding:16px">
       <div class="kc-title" style="margin-bottom:10px">&#128230; Peso distribuido</div>
@@ -491,6 +521,92 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="kc-title" style="margin-bottom:10px">Cancelamentos do dia</div>
     <div id="ex-cancel" style="font-size:10px;color:var(--tx2)"></div>
   </div>
+  </div><!-- fim exec-view-dia -->
+
+  <!-- VIEW PERÍODO (novo) -->
+  <div id="exec-view-periodo" style="display:none">
+    <div id="per-titulo" style="font-size:14px;font-weight:800;color:var(--cy);margin-bottom:12px;text-align:center"></div>
+
+    <!-- 3 KPIs resumo -->
+    <div class="dash-kpi-row">
+      <div class="dash-kpi-box" style="border-top:3px solid rgba(0,194,255,.5)">
+        <div class="dash-kpi-lbl">📦 Peso Planejado</div>
+        <div class="dash-kpi-val" id="per-peso-plan" style="color:var(--cy)">---</div>
+        <div class="dash-kpi-sub">kg total período</div>
+      </div>
+      <div class="dash-kpi-box" style="border-top:3px solid rgba(77,255,195,.5)">
+        <div class="dash-kpi-lbl">✅ Peso Realizado</div>
+        <div class="dash-kpi-val" id="per-peso-real" style="color:var(--gr)">---</div>
+        <div class="dash-kpi-sub" id="per-peso-pct"></div>
+      </div>
+      <div class="dash-kpi-box" style="border-top:3px solid rgba(255,100,100,.5)">
+        <div class="dash-kpi-lbl">❌ Não Entregue</div>
+        <div class="dash-kpi-val" id="per-peso-diff" style="color:var(--rd)">---</div>
+        <div class="dash-kpi-sub">kg de diferença</div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO VOLUME -->
+    <div class="dash-section">
+      <div class="dash-section-title" style="color:var(--cy)">📦 VOLUME — Análise detalhada</div>
+      <!-- Barra dia a dia -->
+      <div id="per-peso-dias" style="margin-bottom:14px"></div>
+      <!-- Causas -->
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Causas dos desvios de peso</div>
+      <div id="per-peso-causas"></div>
+    </div>
+
+    <!-- SEÇÃO KM -->
+    <div class="dash-section">
+      <div class="dash-section-title" style="color:var(--am)">🚗 KM — Análise detalhada</div>
+      <div class="dash-kpi-row" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="dash-kpi-box">
+          <div class="dash-kpi-lbl">Planejado</div>
+          <div class="dash-kpi-val" id="per-km-plan" style="font-size:16px;color:var(--am)">---</div>
+          <div class="dash-kpi-sub">km</div>
+        </div>
+        <div class="dash-kpi-box">
+          <div class="dash-kpi-lbl">Realizado</div>
+          <div class="dash-kpi-val" id="per-km-real" style="font-size:16px;color:var(--tx)">---</div>
+          <div class="dash-kpi-sub">km</div>
+        </div>
+        <div class="dash-kpi-box">
+          <div class="dash-kpi-lbl">Desvio médio</div>
+          <div class="dash-kpi-val" id="per-km-desv" style="font-size:16px;color:var(--rd)">---</div>
+          <div class="dash-kpi-sub">km por dia</div>
+        </div>
+      </div>
+      <div id="per-km-dias" style="margin-bottom:14px"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Causas dos desvios de KM</div>
+      <div id="per-km-causas"></div>
+    </div>
+
+    <!-- SEÇÃO TEMPO -->
+    <div class="dash-section">
+      <div class="dash-section-title" style="color:var(--gr)">⏱️ TEMPO — Análise detalhada</div>
+      <div class="dash-kpi-row" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="dash-kpi-box">
+          <div class="dash-kpi-lbl">Dias OK</div>
+          <div class="dash-kpi-val" id="per-t-ok" style="font-size:24px;color:var(--gr)">---</div>
+          <div class="dash-kpi-sub">dentro de 17:00</div>
+        </div>
+        <div class="dash-kpi-box">
+          <div class="dash-kpi-lbl">Dias Atenção</div>
+          <div class="dash-kpi-val" id="per-t-am" style="font-size:24px;color:var(--am)">---</div>
+          <div class="dash-kpi-sub">até 19:00</div>
+        </div>
+        <div class="dash-kpi-box">
+          <div class="dash-kpi-lbl">Dias Críticos</div>
+          <div class="dash-kpi-val" id="per-t-rd" style="font-size:24px;color:var(--rd)">---</div>
+          <div class="dash-kpi-sub">passou das 19:00</div>
+        </div>
+      </div>
+      <div id="per-t-dias" style="margin-bottom:14px"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Causas dos atrasos</div>
+      <div id="per-t-causas"></div>
+    </div>
+  </div><!-- fim exec-view-periodo -->
+
 </div>
 
 <!-- GERÊNCIA -->
@@ -1317,6 +1433,253 @@ function renderEquipes(){
 // ── AÇÕES ──
 function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+// ── DASHBOARD PERÍODO ──
+var PERIODO_ATUAL = 'dia';
+
+function setPeriodo(p){
+  PERIODO_ATUAL = p;
+  // Atualizar botões
+  ['dia','s1','s2','s3','s4','q1','q2','mes'].forEach(function(k){
+    var btn = document.getElementById('per-'+k);
+    if(btn) btn.classList.toggle('active', k===p);
+  });
+  if(p==='dia'){
+    document.getElementById('exec-view-dia').style.display='';
+    document.getElementById('exec-view-periodo').style.display='none';
+  } else {
+    document.getElementById('exec-view-dia').style.display='none';
+    document.getElementById('exec-view-periodo').style.display='';
+    renderDashPeriodo(p);
+  }
+}
+
+function getDiasPeriodo(p){
+  // Retorna array de dias do período no mês atual
+  var m = MES; // ex: '2026-09'
+  var ano = parseInt(m.split('-')[0]);
+  var mes = parseInt(m.split('-')[1]);
+  var dias = Object.keys(D).filter(function(d){return d.startsWith(m);}).sort();
+  
+  if(p==='s1') return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=1&&n<=7;});
+  if(p==='s2') return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=8&&n<=14;});
+  if(p==='s3') return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=15&&n<=21;});
+  if(p==='s4') return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=22&&n<=31;});
+  if(p==='q1') return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n<=15;});
+  if(p==='q2') return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=16;});
+  if(p==='mes') return dias;
+  return [];
+}
+
+function getPerTitulo(p){
+  var nomes={'s1':'Semana 1 (01-07)','s2':'Semana 2 (08-14)','s3':'Semana 3 (15-21)','s4':'Semana 4 (22-31)','q1':'1ª Quinzena (01-15)','q2':'2ª Quinzena (16-30)','mes':'Mês completo'};
+  return (nomes[p]||p) + ' — ' + MES;
+}
+
+function makeBarra(label, val, max, cor, extra){
+  var pct = max>0 ? Math.round(val/max*100) : 0;
+  return '<div class="dash-bar-row">' +
+    '<div class="dash-bar-lbl"><span>'+label+'</span><span style="color:'+cor+';font-weight:700">'+extra+'</span></div>' +
+    '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div>' +
+    '</div>';
+}
+
+function renderDashPeriodo(p){
+  var dias = getDiasPeriodo(p);
+  if(!dias.length){
+    document.getElementById('per-titulo').textContent = getPerTitulo(p) + ' — sem dados';
+    return;
+  }
+
+  document.getElementById('per-titulo').textContent = '📊 ' + getPerTitulo(p);
+
+  // Acumular dados
+  var totalPlan=0, totalReal=0, totalCan=0;
+  var kmPlan=0, kmReal=0;
+  var diasOk=0, diasAm=0, diasRd=0;
+
+  // Causas — chips salvos em LD
+  var causasPeso={}, causasKM={}, causasT={};
+  var chipsPesoNomes=['Falta producao','Cliente fechado','Transito','Avaria produto','Recarga parcial','Evento extra','Outros'];
+  var chipsKMNomes=['Rota alternativa','Evento extra','Retorno consig.','Manutencao','Transito','Rio Preto Eva','Outros'];
+  var chipsTNomes=['Carregamento atrasado','Falta de produto','Problema no carro','Falta de equipe','Producao atrasada','Evento extra','Outros'];
+
+  chipsPesoNomes.forEach(function(c){causasPeso[c]=0;});
+  chipsKMNomes.forEach(function(c){causasKM[c]=0;});
+  chipsTNomes.forEach(function(c){causasT[c]=0;});
+
+  var diasData = [];
+
+  dias.forEach(function(dia){
+    var d = D[dia];
+    var ld = LD[dia]||{};
+    if(!d) return;
+
+    var pp = d.peso_plan_pv||0;
+    var eq = d.equipes||{};
+    var pr = 0;
+    var nOk=0, tot=0;
+    Object.values(eq).forEach(function(E){
+      (E.cargas||[]).forEach(function(c){
+        if(c.tipo==='evento') return;
+        tot++;
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.cancelada) return;
+        if(lc.ok){pr+=(lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan);nOk++;}
+      });
+    });
+
+    totalPlan += pp;
+    totalReal += pr;
+
+    // KM
+    var kp = d.km_plan||0;
+    var kr = 0;
+    Object.values(eq).forEach(function(E){
+      (E.cargas||[]).forEach(function(c){
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.hod_ini&&lc.hod_ret) kr += (+lc.hod_ret - +lc.hod_ini);
+      });
+    });
+    kmPlan += kp;
+    kmReal += kr;
+
+    // Tempo — semáforo do dia
+    var pctP = pp>0&&pr>0?Math.round(pr/pp*100):null;
+    var difK = kr-kp;
+    var semCor = pctP>=95?'var(--gr)':pctP>=90?'var(--am)':'var(--rd)';
+
+    // Chips de motivo
+    (ld.c_p||[]).forEach(function(c){if(causasPeso[c]!==undefined)causasPeso[c]++;});
+    (ld.c_k||[]).forEach(function(c){if(causasKM[c]!==undefined)causasKM[c]++;});
+    (ld.c_t||[]).forEach(function(c){if(causasT[c]!==undefined)causasT[c]++;});
+
+    // Tempo status
+    var excessoMin = 0;
+    var nEq = Object.keys(eq).filter(function(m){return eq[m].cargas&&eq[m].cargas.length>0;}).length;
+    Object.values(eq).forEach(function(E){
+      (E.cargas||[]).forEach(function(c){
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.h_ret_real){
+          var hh=parseInt(lc.h_ret_real.split(':')[0]),mm=parseInt(lc.h_ret_real.split(':')[1]||0);
+          var totalMin=hh*60+mm;
+          if(totalMin>17*60) excessoMin += (totalMin-17*60);
+        }
+      });
+    });
+    var limite19 = nEq*120;
+    if(excessoMin===0) diasOk++;
+    else if(excessoMin<=limite19) diasAm++;
+    else diasRd++;
+
+    var semT = excessoMin===0?'var(--gr)':excessoMin<=limite19?'var(--am)':'var(--rd)';
+
+    diasData.push({dia:dia, pp:pp, pr:pr, pct:pctP, kp:kp, kr:kr, difK:difK, semCor:semCor, semT:semT});
+  });
+
+  // ── PESO ──
+  var fN2=function(n){return n?n.toLocaleString('pt-BR',{maximumFractionDigits:0}):'-';};
+  document.getElementById('per-peso-plan').textContent = fN2(totalPlan)+' kg';
+  document.getElementById('per-peso-real').textContent = fN2(totalReal)+' kg';
+  var pctGeral = totalPlan>0?Math.round(totalReal/totalPlan*100):0;
+  var corGeral = pctGeral>=95?'var(--gr)':pctGeral>=90?'var(--am)':'var(--rd)';
+  document.getElementById('per-peso-pct').innerHTML = '<span style="color:'+corGeral+';font-weight:800">'+pctGeral+'%</span> do planejado';
+  document.getElementById('per-peso-diff').textContent = fN2(totalPlan-totalReal)+' kg';
+
+  // Dias de peso
+  var diasPesoHtml = '<div style="margin-bottom:8px">';
+  diasData.forEach(function(d){
+    var wd = new Date(d.dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'});
+    var pct = d.pp>0&&d.pr>0?Math.round(d.pr/d.pp*100):0;
+    var cor = pct>=95?'var(--gr)':pct>=90?'var(--am)':'var(--rd)';
+    diasPesoHtml += '<div class="dash-dia-row">' +
+      '<span style="color:var(--tx2);min-width:60px">'+wd+'</span>' +
+      '<div style="flex:1;margin:0 8px"><div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>' +
+      '<span style="color:'+cor+';font-weight:700;min-width:40px;text-align:right">'+pct+'%</span>' +
+      '<span style="color:var(--tx3);min-width:80px;text-align:right">'+fN2(d.pr)+' kg</span>' +
+      '</div>';
+  });
+  diasPesoHtml += '</div>';
+  document.getElementById('per-peso-dias').innerHTML = diasPesoHtml;
+
+  // Causas de peso
+  var totalCausasP = Object.values(causasPeso).reduce(function(a,b){return a+b;},0);
+  var causasPHtml = '';
+  if(totalCausasP>0){
+    Object.keys(causasPeso).sort(function(a,b){return causasPeso[b]-causasPeso[a];}).forEach(function(c){
+      if(causasPeso[c]===0) return;
+      var pct = Math.round(causasPeso[c]/totalCausasP*100);
+      causasPHtml += makeBarra(c, causasPeso[c], totalCausasP, 'var(--rd)', pct+'% ('+causasPeso[c]+'x)');
+    });
+  } else {
+    causasPHtml = '<div style="color:var(--tx3);font-size:10px">Nenhum motivo registrado ainda</div>';
+  }
+  document.getElementById('per-peso-causas').innerHTML = causasPHtml;
+
+  // ── KM ──
+  document.getElementById('per-km-plan').textContent = kmPlan>0?kmPlan.toLocaleString('pt-BR',{maximumFractionDigits:0})+' km':'---';
+  document.getElementById('per-km-real').textContent = kmReal>0?kmReal.toLocaleString('pt-BR',{maximumFractionDigits:0})+' km':'---';
+  var desv = dias.length>0?(kmReal-kmPlan)/dias.length:0;
+  var corD = Math.abs(desv)<=10?'var(--gr)':Math.abs(desv)<=20?'var(--am)':'var(--rd)';
+  document.getElementById('per-km-desv').innerHTML = '<span style="color:'+corD+'">'+(desv>=0?'+':'')+desv.toFixed(1)+' km</span>';
+
+  var diasKMHtml = '<div style="margin-bottom:8px">';
+  diasData.forEach(function(d){
+    var wd = new Date(d.dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'});
+    var dif = d.kr-d.kp;
+    var cor = Math.abs(dif)<=10?'var(--gr)':Math.abs(dif)<=20?'var(--am)':'var(--rd)';
+    diasKMHtml += '<div class="dash-dia-row">' +
+      '<span style="color:var(--tx2);min-width:60px">'+wd+'</span>' +
+      '<span style="color:'+cor+';font-weight:700;min-width:70px">'+(d.kr>0?(dif>=0?'+':'')+dif.toFixed(0)+' km':'sem dado')+'</span>' +
+      '<span style="color:var(--tx3);font-size:9px">'+(d.kp>0?d.kp.toFixed(0)+' plan':'')+'</span>' +
+      '</div>';
+  });
+  diasKMHtml += '</div>';
+  document.getElementById('per-km-dias').innerHTML = diasKMHtml;
+
+  var totalCausasK = Object.values(causasKM).reduce(function(a,b){return a+b;},0);
+  var causasKHtml = '';
+  if(totalCausasK>0){
+    Object.keys(causasKM).sort(function(a,b){return causasKM[b]-causasKM[a];}).forEach(function(c){
+      if(causasKM[c]===0) return;
+      var pct = Math.round(causasKM[c]/totalCausasK*100);
+      causasKHtml += makeBarra(c, causasKM[c], totalCausasK, 'var(--am)', pct+'% ('+causasKM[c]+'x)');
+    });
+  } else {
+    causasKHtml = '<div style="color:var(--tx3);font-size:10px">Nenhum motivo registrado ainda</div>';
+  }
+  document.getElementById('per-km-causas').innerHTML = causasKHtml;
+
+  // ── TEMPO ──
+  document.getElementById('per-t-ok').textContent = diasOk;
+  document.getElementById('per-t-am').textContent = diasAm;
+  document.getElementById('per-t-rd').textContent = diasRd;
+
+  var diasTHtml = '<div style="margin-bottom:8px">';
+  diasData.forEach(function(d){
+    var wd = new Date(d.dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'});
+    diasTHtml += '<div class="dash-dia-row">' +
+      '<span style="color:var(--tx2);min-width:60px">'+wd+'</span>' +
+      '<div class="dash-dia-semaforo" style="background:'+d.semT+'"></div>' +
+      '<span style="color:'+d.semT+';font-weight:700;margin-left:6px">'+(d.semT==='var(--gr)'?'✓ Dentro de 17:00':d.semT==='var(--am)'?'⚠ Até 19:00':'✕ Passou das 19:00')+'</span>' +
+      '</div>';
+  });
+  diasTHtml += '</div>';
+  document.getElementById('per-t-dias').innerHTML = diasTHtml;
+
+  var totalCausasT = Object.values(causasT).reduce(function(a,b){return a+b;},0);
+  var causasTHtml = '';
+  if(totalCausasT>0){
+    Object.keys(causasT).sort(function(a,b){return causasT[b]-causasT[a];}).forEach(function(c){
+      if(causasT[c]===0) return;
+      var pct = Math.round(causasT[c]/totalCausasT*100);
+      causasTHtml += makeBarra(c, causasT[c], totalCausasT, 'var(--gr)', pct+'% ('+causasT[c]+'x)');
+    });
+  } else {
+    causasTHtml = '<div style="color:var(--tx3);font-size:10px">Nenhum motivo registrado ainda</div>';
+  }
+  document.getElementById('per-t-causas').innerHTML = causasTHtml;
+}
+
 // Normaliza nome para cruzamento — usa primeiro nome como chave
 function normNome(n){
   if(!n)return '';
