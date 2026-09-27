@@ -225,6 +225,43 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
   letter-spacing:.1em;
   margin-bottom:5px;
 }
+/* ── NOVO DASHBOARD ── */
+.dash-page{background:var(--bg);min-height:100%}
+.dash-header{padding:12px 0 8px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.dash-header-title{font-size:16px;font-weight:800;color:var(--tx);margin-bottom:2px}
+.dash-header-sub{font-size:10px;color:var(--tx3)}
+.dash-per-sel{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.dash-per-btn{padding:4px 11px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--b);background:transparent;color:var(--tx3);font-family:var(--ff);transition:all .2s}
+.dash-per-btn.on{background:rgba(0,194,255,.15);color:var(--cy);border-color:rgba(0,194,255,.35)}
+.dash-kpi3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.dash-kpi-card{border-radius:12px;padding:14px;background:var(--s1);position:relative;overflow:hidden}
+.dash-kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.dash-kpi-card.p::before{background:linear-gradient(90deg,#00C2FF,#4DFFC3)}
+.dash-kpi-card.k::before{background:linear-gradient(90deg,#FFD166,#FF9A3C)}
+.dash-kpi-card.t::before{background:linear-gradient(90deg,#4DFFC3,#00C2FF)}
+.dash-kpi-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);margin-bottom:6px;font-weight:700}
+.dash-kpi-main{font-size:24px;font-weight:900;font-family:var(--mo);line-height:1;margin-bottom:4px}
+.dash-kpi-sub{font-size:10px;color:var(--tx3);margin-bottom:8px}
+.dash-kpi-pct{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:800}
+.dash-kpi-pct.gr{background:rgba(77,255,195,.15);color:#4DFFC3}
+.dash-kpi-pct.am{background:rgba(255,209,102,.15);color:#FFD166}
+.dash-kpi-pct.rd{background:rgba(255,100,100,.15);color:#FF6464}
+.dash-sec{background:var(--s1);border-radius:12px;padding:14px;margin-bottom:12px}
+.dash-sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.dash-dia-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.dash-dia-dt{font-size:9px;color:var(--tx3);min-width:50px}
+.dash-dia-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.dash-dia-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.dash-dia-val{font-size:9px;font-weight:700;min-width:35px;text-align:right}
+.dash-causa-item{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dash-causa-lbl{font-size:10px;color:var(--tx2);min-width:130px}
+.dash-causa-bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.dash-causa-fill{height:100%;border-radius:4px}
+.dash-causa-pct{font-size:10px;font-weight:700;min-width:40px;text-align:right}
+.dash-t-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.dash-t-box{background:rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:center}
+.dash-t-num{font-size:28px;font-weight:900;font-family:var(--mo);line-height:1}
+.dash-t-lbl{font-size:8px;color:var(--tx3);margin-top:3px}
 /* DASHBOARD PERÍODO */
 .per-selector{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .per-btn{padding:5px 12px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--b);background:rgba(255,255,255,.05);color:var(--tx3);font-family:var(--ff)}
@@ -433,6 +470,84 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div id="tab-tempo" style="display:none"></div>
   <div id="tab-km" style="display:none"></div>
   <div id="tab-peso" style="display:none"></div>
+</div>
+
+<!-- DASHBOARD NOVO -->
+<div id="page-dash" style="display:none;padding:0 2px">
+  <div class="dash-page">
+    <div class="dash-header">
+      <div class="dash-header-title">📊 Dashboard — GELOCRIM PVR</div>
+      <div class="dash-header-sub" id="dash-sub">Setembro 2026</div>
+    </div>
+    <div class="dash-per-sel">
+      <button class="dash-per-btn on" id="dp-mes" onclick="setDashPer('mes')">Mês</button>
+      <button class="dash-per-btn" id="dp-s1" onclick="setDashPer('s1')">Sem 1</button>
+      <button class="dash-per-btn" id="dp-s2" onclick="setDashPer('s2')">Sem 2</button>
+      <button class="dash-per-btn" id="dp-s3" onclick="setDashPer('s3')">Sem 3</button>
+      <button class="dash-per-btn" id="dp-s4" onclick="setDashPer('s4')">Sem 4</button>
+      <button class="dash-per-btn" id="dp-q1" onclick="setDashPer('q1')">1ª Quinz</button>
+      <button class="dash-per-btn" id="dp-q2" onclick="setDashPer('q2')">2ª Quinz</button>
+    </div>
+    <!-- 3 KPIs principais -->
+    <div class="dash-kpi3">
+      <div class="dash-kpi-card p">
+        <div class="dash-kpi-lbl">📦 Volume distribuído</div>
+        <div class="dash-kpi-main" id="dk-peso-real" style="color:var(--cy)">---</div>
+        <div class="dash-kpi-sub" id="dk-peso-plan">de --- planejados</div>
+        <div class="dash-kpi-pct" id="dk-peso-pct">---%</div>
+      </div>
+      <div class="dash-kpi-card k">
+        <div class="dash-kpi-lbl">🚗 KM percorrido</div>
+        <div class="dash-kpi-main" id="dk-km-real" style="color:var(--am)">---</div>
+        <div class="dash-kpi-sub" id="dk-km-plan">de --- planejados</div>
+        <div class="dash-kpi-pct" id="dk-km-pct">--- km desvio</div>
+      </div>
+      <div class="dash-kpi-card t">
+        <div class="dash-kpi-lbl">⏱️ Tempo operacional</div>
+        <div class="dash-kpi-main" id="dk-t-ok" style="color:var(--gr)">---</div>
+        <div class="dash-kpi-sub" id="dk-t-sub">dias dentro do limite</div>
+        <div class="dash-kpi-pct" id="dk-t-pct">--- dias críticos</div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO VOLUME -->
+    <div class="dash-sec">
+      <div class="dash-sec-title" style="color:var(--cy)">📦 Volume — dia a dia</div>
+      <div id="dk-peso-dias"></div>
+      <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Causas de desvio</div>
+      <div id="dk-peso-causas"><div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div></div>
+    </div>
+
+    <!-- SEÇÃO KM -->
+    <div class="dash-sec">
+      <div class="dash-sec-title" style="color:var(--am)">🚗 KM — dia a dia</div>
+      <div id="dk-km-dias"></div>
+      <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Causas de desvio</div>
+      <div id="dk-km-causas"><div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div></div>
+    </div>
+
+    <!-- SEÇÃO TEMPO -->
+    <div class="dash-sec">
+      <div class="dash-sec-title" style="color:var(--gr)">⏱️ Tempo — dia a dia</div>
+      <div class="dash-t-boxes">
+        <div class="dash-t-box" style="border-top:2px solid var(--gr)">
+          <div class="dash-t-num" id="dk-t-verde" style="color:var(--gr)">0</div>
+          <div class="dash-t-lbl">✓ Até 17:00</div>
+        </div>
+        <div class="dash-t-box" style="border-top:2px solid var(--am)">
+          <div class="dash-t-num" id="dk-t-amarelo" style="color:var(--am)">0</div>
+          <div class="dash-t-lbl">⚠ Até 19:00</div>
+        </div>
+        <div class="dash-t-box" style="border-top:2px solid var(--rd)">
+          <div class="dash-t-num" id="dk-t-vermelho" style="color:var(--rd)">0</div>
+          <div class="dash-t-lbl">✕ Após 19:00</div>
+        </div>
+      </div>
+      <div id="dk-t-dias"></div>
+      <div style="font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Causas de atraso</div>
+      <div id="dk-t-causas"><div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- EXECUTIVO -->
@@ -1433,6 +1548,183 @@ function renderEquipes(){
 // ── AÇÕES ──
 function togCOk(id){if(!DIA)return;if(!LC[DIA][id])LC[DIA][id]={};LC[DIA][id].ok=!LC[DIA][id].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togEq(mot){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].ok=!LE[DIA][mot].ok;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+// ── NOVO DASHBOARD ──
+var DASH_PER = 'mes';
+
+function setDashPer(p){
+  DASH_PER = p;
+  ['mes','s1','s2','s3','s4','q1','q2'].forEach(function(k){
+    var btn=document.getElementById('dp-'+k);
+    if(btn)btn.classList.toggle('on',k===p);
+  });
+  renderDashboard();
+}
+
+function getDashDias(p){
+  var dias=Object.keys(D).filter(function(d){return d.startsWith(MES)&&D[d];}).sort();
+  if(p==='s1')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n<=7;});
+  if(p==='s2')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=8&&n<=14;});
+  if(p==='s3')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=15&&n<=21;});
+  if(p==='s4')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=22;});
+  if(p==='q1')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n<=15;});
+  if(p==='q2')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=16;});
+  return dias;
+}
+
+function fKG(n){if(!n||n===0)return '---'; if(n>=1000000)return (n/1000000).toFixed(1)+' Mt'; if(n>=1000)return (n/1000).toFixed(1)+' t'; return n.toFixed(0)+' kg';}
+function fKM(n){return n?n.toFixed(0)+' km':'---';}
+
+function renderDashboard(){
+  var dias = getDashDias(DASH_PER);
+  if(!dias.length) return;
+
+  // Subtítulo
+  var subs={'mes':'Mês completo','s1':'Semana 1 (01-07)','s2':'Semana 2 (08-14)','s3':'Semana 3 (15-21)','s4':'Semana 4 (22+)','q1':'1ª Quinzena (01-15)','q2':'2ª Quinzena (16-30)'};
+  var subEl=document.getElementById('dash-sub');
+  if(subEl)subEl.textContent=MES+' — '+subs[DASH_PER];
+
+  var totalPlan=0,totalReal=0,kmPlan=0,kmReal=0;
+  var diasOk=0,diasAm=0,diasRd=0;
+  var causasP={},causasK={},causasT={};
+  var diasDados=[];
+
+  dias.forEach(function(dia){
+    var d=D[dia]; if(!d)return;
+    var ld=LD[dia]||{};
+    var eq=d.equipes||{};
+    var pp=d.peso_plan_pv||0;
+    var pr=0;
+    Object.values(eq).forEach(function(E){
+      (E.cargas||[]).forEach(function(c){
+        if(c.tipo==='evento')return;
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.cancelada||!lc.ok)return;
+        pr+=(lc.peso_real!==undefined&&lc.peso_real!==''?+lc.peso_real:c.peso_plan);
+      });
+    });
+    totalPlan+=pp; totalReal+=pr;
+
+    // KM
+    var kp=d.km_plan||0; var kr=0;
+    Object.values(eq).forEach(function(E){
+      (E.cargas||[]).forEach(function(c){
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.hod_ini&&lc.hod_ret)kr+=(+lc.hod_ret-+lc.hod_ini);
+      });
+    });
+    kmPlan+=kp; kmReal+=kr;
+
+    // Chips motivo
+    (ld.c_p||[]).forEach(function(c){causasP[c]=(causasP[c]||0)+1;});
+    (ld.c_k||[]).forEach(function(c){causasK[c]=(causasK[c]||0)+1;});
+    (ld.c_t||[]).forEach(function(c){causasT[c]=(causasT[c]||0)+1;});
+
+    // Semáforo tempo
+    var excesso=0,nEq=Object.keys(eq).filter(function(m){return(eq[m].cargas||[]).length>0;}).length;
+    Object.values(eq).forEach(function(E){
+      (E.cargas||[]).forEach(function(c){
+        var lc=(LC[dia]||{})[c.id]||{};
+        if(lc.h_ret_real){var p=lc.h_ret_real.split(':');var t=parseInt(p[0])*60+parseInt(p[1]||0);if(t>17*60)excesso+=(t-17*60);}
+      });
+    });
+    var semT=excesso===0?'gr':excesso<=nEq*120?'am':'rd';
+    if(semT==='gr')diasOk++; else if(semT==='am')diasAm++; else diasRd++;
+
+    var pct=pp>0&&pr>0?Math.round(pr/pp*100):null;
+    diasDados.push({dia:dia,pp:pp,pr:pr,pct:pct,kp:kp,kr:kr,difK:kr-kp,semT:semT});
+  });
+
+  // ── PESO KPIs ──
+  var pctG=totalPlan>0?Math.round(totalReal/totalPlan*100):0;
+  var corPG=pctG>=95?'gr':pctG>=90?'am':'rd';
+  var setText=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  var setHTML=function(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;};
+
+  setText('dk-peso-real',fKG(totalReal));
+  setText('dk-peso-plan','de '+fKG(totalPlan)+' planejados');
+  var pEl=document.getElementById('dk-peso-pct');
+  if(pEl){pEl.textContent=pctG+'%';pEl.className='dash-kpi-pct '+corPG;}
+
+  // ── KM KPIs ──
+  var difKtotal=kmReal-kmPlan;
+  var corKM=Math.abs(difKtotal/Math.max(dias.length,1))<=10?'gr':Math.abs(difKtotal/Math.max(dias.length,1))<=20?'am':'rd';
+  setText('dk-km-real',fKM(kmReal));
+  setText('dk-km-plan','de '+fKM(kmPlan)+' planejados');
+  var kEl=document.getElementById('dk-km-pct');
+  if(kEl){kEl.textContent=(difKtotal>=0?'+':'')+difKtotal.toFixed(0)+' km desvio total';kEl.className='dash-kpi-pct '+corKM;}
+
+  // ── TEMPO KPIs ──
+  setText('dk-t-ok',diasOk);
+  setText('dk-t-sub','dias dentro do limite');
+  var tEl=document.getElementById('dk-t-pct');
+  if(tEl){tEl.textContent=diasRd+' dias críticos';tEl.className='dash-kpi-pct '+(diasRd===0?'gr':diasRd<=2?'am':'rd');}
+  setText('dk-t-verde',diasOk);
+  setText('dk-t-amarelo',diasAm);
+  setText('dk-t-vermelho',diasRd);
+
+  // ── PESO DIAS ──
+  var maxPP=Math.max.apply(null,diasDados.map(function(d){return d.pp;}));
+  var pesoHTML='';
+  diasDados.forEach(function(d){
+    var wd=new Date(d.dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit/MM'}).replace(',','');
+    var pct=d.pct||0;
+    var cor=pct>=95?'#4DFFC3':pct>=90?'#FFD166':'#FF6464';
+    var barW=maxPP>0?Math.round(d.pr/maxPP*100):0;
+    pesoHTML+='<div class="dash-dia-item">'+
+      '<span class="dash-dia-dt">'+d.dia.substring(8)+'/09</span>'+
+      '<div class="dash-dia-bar"><div class="dash-dia-fill" style="width:'+barW+'%;background:'+cor+'"></div></div>'+
+      '<span class="dash-dia-val" style="color:'+cor+'">'+pct+'%</span>'+
+      '</div>';
+  });
+  setHTML('dk-peso-dias',pesoHTML);
+
+  // ── KM DIAS ──
+  var kmHTML='';
+  diasDados.forEach(function(d){
+    var dif=d.difK;
+    var cor=Math.abs(dif)<=10?'#4DFFC3':Math.abs(dif)<=20?'#FFD166':'#FF6464';
+    kmHTML+='<div class="dash-dia-item">'+
+      '<span class="dash-dia-dt">'+d.dia.substring(8)+'/09</span>'+
+      '<div class="dash-dia-bar"><div class="dash-dia-fill" style="width:'+(d.kr>0?Math.min(100,Math.abs(dif)/50*100):0)+'%;background:'+cor+'"></div></div>'+
+      '<span class="dash-dia-val" style="color:'+cor+'">'+(d.kr>0?(dif>=0?'+':'')+dif.toFixed(0)+'km':'---')+'</span>'+
+      '</div>';
+  });
+  setHTML('dk-km-dias',kmHTML);
+
+  // ── TEMPO DIAS ──
+  var tHTML='';
+  diasDados.forEach(function(d){
+    var cor=d.semT==='gr'?'#4DFFC3':d.semT==='am'?'#FFD166':'#FF6464';
+    var txt=d.semT==='gr'?'✓ 17:00':d.semT==='am'?'⚠ 19:00':'✕ crítico';
+    tHTML+='<div class="dash-dia-item">'+
+      '<span class="dash-dia-dt">'+d.dia.substring(8)+'/09</span>'+
+      '<div class="dash-dia-bar"><div class="dash-dia-fill" style="width:100%;background:'+cor+';opacity:.4"></div></div>'+
+      '<span class="dash-dia-val" style="color:'+cor+'">'+txt+'</span>'+
+      '</div>';
+  });
+  setHTML('dk-t-dias',tHTML);
+
+  // ── CAUSAS ──
+  function renderCausas(causas, elId, cor){
+    var total=Object.values(causas).reduce(function(a,b){return a+b;},0);
+    if(!total){setHTML(elId,'<div style="font-size:10px;color:var(--tx3)">Registre motivos no Lançamento</div>');return;}
+    var html='';
+    Object.keys(causas).sort(function(a,b){return causas[b]-causas[a];}).forEach(function(c){
+      if(!causas[c])return;
+      var pct=Math.round(causas[c]/total*100);
+      html+='<div class="dash-causa-item">'+
+        '<span class="dash-causa-lbl">'+c+'</span>'+
+        '<div class="dash-causa-bar"><div class="dash-causa-fill" style="width:'+pct+'%;background:'+cor+'"></div></div>'+
+        '<span class="dash-causa-pct" style="color:'+cor+'">'+pct+'%</span>'+
+        '</div>';
+    });
+    setHTML(elId,html);
+  }
+  renderCausas(causasP,'dk-peso-causas','#FF6464');
+  renderCausas(causasK,'dk-km-causas','#FFD166');
+  renderCausas(causasT,'dk-t-causas','#4DFFC3');
+}
+
 // ── DASHBOARD PERÍODO ──
 var PERIODO_ATUAL = 'dia';
 
