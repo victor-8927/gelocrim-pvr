@@ -477,6 +477,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div>
       <div style="font-size:15px;font-weight:900;color:var(--tx)">📊 Dashboard</div>
       <div style="font-size:9px;color:var(--tx3);margin-top:2px" id="dash-periodo-label">Carregando...</div>
+    <div id="dash-debug" style="font-size:9px;color:#FFD166;margin-top:4px;padding:6px;background:rgba(255,209,102,.1);border-radius:6px;display:none"></div>
     </div>
     <div style="font-size:9px;color:var(--tx3)" id="dash-updated">↑ Sync</div>
   </div>
@@ -1695,6 +1696,8 @@ function barItem(label,val,max,cor,extra){
 function renderDashboard(){
   // Buscar dados do Supabase se D[] estiver vazio
   var diasLocal = Object.keys(D).filter(function(d){return D[d];});
+  var dbg=document.getElementById('dash-debug');
+  if(dbg){dbg.style.display='block';dbg.textContent='D[]: '+diasLocal.length+' dias | MES: '+MES+' | LC: '+Object.keys(LC).length;}
   if(diasLocal.length === 0){
     // Mostrar loading
     var ldEl = document.getElementById('dash-periodo-label');
@@ -1729,6 +1732,9 @@ function renderDashboard(){
       // Atualizar MES para o mais recente
       var meses=Object.keys(D).map(function(d){return d.substring(0,7);}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
       if(meses.length) MES=meses[meses.length-1];
+      
+      var dbg2=document.getElementById('dash-debug');
+      if(dbg2){dbg2.textContent='Supabase OK: '+dias_sb.length+' dias, '+cargas_sb.length+' cargas, '+equipes_sb.length+' equipes | D[]:'+Object.keys(D).length+' | MES:'+MES;}
       
       _renderDashNow();
     }).catch(function(e){
