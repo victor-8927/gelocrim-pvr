@@ -1648,16 +1648,6 @@ function setDashPer(p){
   renderDashboard();
 }
 
-function getDashDias(p){
-  var dias=Object.keys(D).filter(function(d){return d.startsWith(MES)&&D[d];}).sort();
-  if(p==='s1')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n<=7;});
-  if(p==='s2')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=8&&n<=14;});
-  if(p==='s3')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=15&&n<=21;});
-  if(p==='s4')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=22;});
-  if(p==='q1')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n<=15;});
-  if(p==='q2')return dias.filter(function(d){var n=parseInt(d.split('-')[2]);return n>=16;});
-  return dias;
-}
 
 function fKG(n){if(!n||n===0)return '---'; if(n>=1000000)return (n/1000000).toFixed(1)+' Mt'; if(n>=1000)return (n/1000).toFixed(1)+' t'; return n.toFixed(0)+' kg';}
 function fKM(n){return n?n.toFixed(0)+' km':'---';}
@@ -1704,14 +1694,22 @@ function barItem(label,val,max,cor,extra){
 
 function renderDashboard(){
   var dias = getDashDias(DASH_PER);
-  if(!dias.length) return;
+  var subEl=document.getElementById('dash-periodo-label');
+  var labels={'7d':'Últimos 7 dias','15d':'Últimos 15 dias','mes':'Mês '+MES};
+  if(subEl)subEl.textContent=labels[DASH_PER]||DASH_PER;
+  if(!dias.length){
+    ['dv-plan','dv-real','dv-diff','dk-plan','dk-real','dk-desv','dt-ok','dt-am','dt-rd'].forEach(function(id){
+      var el=document.getElementById(id);if(el)el.textContent='---';
+    });
+    return;
+  }
 
   // Subtítulo
   var subs={'mes':'Mês completo','s1':'Semana 1 (01-07)','s2':'Semana 2 (08-14)','s3':'Semana 3 (15-21)','s4':'Semana 4 (22+)','q1':'1ª Quinzena (01-15)','q2':'2ª Quinzena (16-30)'};
   var subEl=document.getElementById('dash-sub');
   if(subEl)subEl.textContent=MES+' — '+subs[DASH_PER];
 
-  var totalPlan=0,totalReal=0,kmPlan=0,kmReal=0;
+  var totalPlan=0,totalReal=0,totalCan=0,kmPlan=0,kmReal=0;
   var diasOk=0,diasAm=0,diasRd=0;
   var causasP={},causasK={},causasT={};
   var diasDados=[];
