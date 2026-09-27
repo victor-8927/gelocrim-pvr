@@ -1693,14 +1693,61 @@ function barItem(label,val,max,cor,extra){
 }
 
 function renderDashboard(){
+  // Buscar dados do Supabase se D[] estiver vazio
+  var diasLocal = Object.keys(D).filter(function(d){return D[d];});
+  if(diasLocal.length === 0){
+    // Mostrar loading
+    var ldEl = document.getElementById('dash-periodo-label');
+    if(ldEl) ldEl.textContent = '⏳ Carregando dados...';
+    
+    // Buscar do Supabase
+    Promise.all([
+      fetch(SB_URL+'/rest/v1/pvr_dias?order=dia&select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
+      fetch(SB_URL+'/rest/v1/pvr_cargas?order=dia&select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
+      fetch(SB_URL+'/rest/v1/pvr_equipes?order=dia&select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();})
+    ]).then(function(results){
+      var dias_sb=results[0], cargas_sb=results[1], equipes_sb=results[2];
+      
+      // Montar D[]
+      dias_sb.forEach(function(d){
+        if(!D[d.dia])D[d.dia]={mes:d.mes,km_plan:+d.km_plan||0,peso_plan_pv:+d.peso_plan_pv||0,peso_rotas:+d.peso_rotas||0,peso_eventos:+d.peso_eventos||0,has_prog:d.has_prog,equipes:{}};
+        if(!LD[d.dia])LD[d.dia]={locked:d.locked,obs_p:d.obs_peso||'',obs_k:d.obs_km||'',obs_t:d.obs_tempo||'',c_p:d.chips_peso||[],c_k:d.chips_km||[],c_t:d.chips_tempo||[]};
+      });
+      equipes_sb.forEach(function(e){
+        if(D[e.dia]&&!D[e.dia].equipes[e.motorista]){
+          D[e.dia].equipes[e.motorista]={cargas:[],vdas:e.vdas||[],equipe:e.equipe||[],km_plan:+e.km_plan||0,peso_plan:+e.peso_plan||0,h_saida_plan:e.h_saida_plan||'07:00',ok:e.ok||false};
+        }
+      });
+      cargas_sb.forEach(function(c){
+        if(D[c.dia]&&D[c.dia].equipes[c.motorista]){
+          D[c.dia].equipes[c.motorista].cargas.push({id:c.carga_id,rota:c.rota,vda:c.vda||'',km_plan:+c.km_plan||0,peso_plan:+c.peso_plan||0,tipo:c.tipo||'rota',cancelada:c.cancelada||false,ok:c.ok||false});
+          if(!LC[c.dia])LC[c.dia]={};
+          LC[c.dia][c.carga_id]={ok:c.ok||false,cancelada:c.cancelada||false};
+        }
+      });
+      
+      // Atualizar MES para o mais recente
+      var meses=Object.keys(D).map(function(d){return d.substring(0,7);}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+      if(meses.length) MES=meses[meses.length-1];
+      
+      _renderDashNow();
+    }).catch(function(e){
+      var ldEl2=document.getElementById('dash-periodo-label');
+      if(ldEl2)ldEl2.textContent='❌ Erro ao carregar: '+e.message;
+    });
+    return;
+  }
+  _renderDashNow();
+}
+
+function _renderDashNow(){
   var dias = getDashDias(DASH_PER);
   var subEl=document.getElementById('dash-periodo-label');
   var labels={'7d':'Últimos 7 dias','15d':'Últimos 15 dias','mes':'Mês '+MES};
   if(subEl)subEl.textContent=labels[DASH_PER]||DASH_PER;
   if(!dias.length){
-    ['dv-plan','dv-real','dv-diff','dk-plan','dk-real','dk-desv','dt-ok','dt-am','dt-rd'].forEach(function(id){
-      var el=document.getElementById(id);if(el)el.textContent='---';
-    });
+    var ldEl3=document.getElementById('dash-periodo-label');
+    if(ldEl3)ldEl3.textContent='⚠️ Sem dados para este período';
     return;
   }
 
@@ -2030,10 +2077,7 @@ function renderDashboard(){
   }).join(''):'<div style="font-size:10px;color:var(--tx3);font-style:italic">Registre motivos no Lançamento</div>';
   setHTML('dt-causas',ctHTML);
 
-  // Label período
-  var labels={'7d':'Últimos 7 dias','15d':'Últimos 15 dias','mes':'Mês '+MES};
-  setText('dash-periodo-label',labels[DASH_PER]||DASH_PER);
-}
+} // fim _renderDashNow
 
 // ── DASHBOARD PERÍODO ──
 var PERIODO_ATUAL = 'dia';
