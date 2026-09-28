@@ -1322,9 +1322,17 @@ function renderKPIs(){
     var E=eq[mot];
     var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
     if(!cargas.length)return;
+    // Saída mais cedo da equipe
     var hSP=hm2min(E.h_saida_plan||'07:00');
+    var hSPs=cargas.map(function(c){return c.h_saida_plan?hm2min(c.h_saida_plan):null;}).filter(Boolean);
+    if(hSPs.length)hSP=Math.min.apply(null,hSPs);
+    // Retorno mais tardio da equipe (última carga)
     var hRPs=cargas.map(function(c){return c.h_ret_plan?hm2min(c.h_ret_plan):null;}).filter(Boolean);
-    if(hRPs.length){planMin+=Math.max.apply(null,hRPs)-hSP;nPlan++;}
+    if(hRPs.length){
+      var hRP=Math.max.apply(null,hRPs);
+      planMin+=hRP-hSP;
+      nPlan++;
+    }
   });
 
   // CAMADA 3 — Realizado + Atrasos + Excessos
