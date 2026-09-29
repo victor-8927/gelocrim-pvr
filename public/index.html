@@ -3368,6 +3368,7 @@ function doLogin(){
 
 function loadApp(){
   loadLocal();
+  var nav=document.getElementById('dia-nav');
   var diasLocal=Object.keys(LD).filter(function(d){return LD[d].locked||D[d];});
   if(diasLocal.length>0){
     var mesesLocal=diasLocal.map(function(d){return d.substring(0,7);}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
@@ -3376,8 +3377,7 @@ function loadApp(){
     var diasM=Object.keys(D).filter(function(d){return d.startsWith(MES);}).sort();
     if(diasM.length)selDia(diasM[diasM.length-1]);
   } else {
-    var nav=document.getElementById('dia-nav');
-    if(nav)nav.innerHTML='<div style="padding:10px;color:var(--tx3);font-size:10px">&#9679; Carregando dias...</div>';
+    if(nav)nav.innerHTML='<div style="padding:10px;color:var(--cy);font-size:10px">⏳ Carregando dias do servidor...</div>';
   }
   fetch(SB_URL+'/rest/v1/pvr_dias?order=dia&select=dia,mes,km_plan,peso_plan_pv,peso_rotas,peso_eventos,has_prog,locked,lock_ts,obs_peso,obs_km,obs_tempo,chips_peso,chips_km,chips_tempo',{
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
@@ -3390,6 +3390,29 @@ function loadApp(){
       if(!LD[d.dia])LD[d.dia]={locked:d.locked||false,lock_ts:d.lock_ts||'',obs_p:d.obs_peso||'',obs_k:d.obs_km||'',obs_t:d.obs_tempo||'',c_p:d.chips_peso||[],c_k:d.chips_km||[],c_t:d.chips_tempo||[]};
       else{LD[d.dia].locked=d.locked||false;LD[d.dia].lock_ts=d.lock_ts||'';}
     });
+    // Buscar cargas e equipes do Supabase
+    return Promise.all([
+      fetch(SB_URL+'/rest/v1/pvr_cargas?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
+      fetch(SB_URL+'/rest/v1/pvr_equipes?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();})
+    ]);
+  })
+  .then(function(results){
+    var cargas_sb=results[0],equipes_sb=results[1];
+    equipes_sb.forEach(function(e){
+      if(D[e.dia]&&!D[e.dia].equipes[e.motorista]){
+        D[e.dia].equipes[e.motorista]={cargas:[],vdas:e.vdas||[],equipe:e.equipe||[],km_plan:+e.km_plan||0,peso_plan:+e.peso_plan||0,h_saida_plan:e.h_saida_plan||'07:00',ok:e.ok||false};
+      }
+    });
+    cargas_sb.forEach(function(c){
+      if(D[c.dia]&&D[c.dia].equipes[c.motorista]){
+        var carga={id:c.carga_id,rota:c.rota,vda:c.vda||'',km_plan:+c.km_plan||0,peso_plan:+c.peso_plan||0,h_saida_plan:c.h_saida_plan||'07:00',h_ret_plan:c.h_ret_plan||'',tipo:c.tipo||'rota',cancelada:c.cancelada||false,ok:c.ok||false};
+        var jaExiste=D[c.dia].equipes[c.motorista].cargas.some(function(x){return x.id===c.carga_id;});
+        if(!jaExiste)D[c.dia].equipes[c.motorista].cargas.push(carga);
+        if(!LC[c.dia])LC[c.dia]={};
+        if(!LC[c.dia][c.carga_id])LC[c.dia][c.carga_id]={ok:c.ok||false,cancelada:c.cancelada||false};
+      }
+    });
+    saveLocal();
     var meses=getMeses();
     if(meses.length){
       MES=meses[meses.length-1];
