@@ -1415,7 +1415,7 @@ function renderKPIs(){
   var elDisp=document.getElementById('vt-disp');
   if(elDisp)elDisp.textContent=min2hm(dispMin);
   var elDispS=document.getElementById('vt-disp-s');
-  if(elDispS)elDispS.textContent=nEq+' equipes x 8h48';
+  if(elDispS)elDispS.textContent=nEq+' eq x 8h48 = '+min2hm(dispMin)+' (eqRotas:'+eqRotas.length+' D:'+Object.keys(eq).length+')';
 
   // Exibir CAMADA 2 — Planejado
   var elPlan=document.getElementById('vt-plan');
