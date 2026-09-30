@@ -1351,8 +1351,8 @@ function renderKPIs(){
   var nEq=eqRotas.length;
 
   // CAMADA 1 — Disponível
-  var dispMin=nEq*528; // N equipes x 10h (8h48 + 1h12)
-  var opMin=nEq*528;   // N equipes x 8h48 operação
+  var dispMin=nEq*600; // N equipes x 10h (07:00→17:00 janela total)
+  var opMin=nEq*528;   // N equipes x 8h48 operação real (descontando 1h12 almoço)
   var intMin=nEq*72;   // N equipes x 1h12 intervalo
 
   // CAMADA 2 — Planejado (Fusion: soma retorno_plan - saida_plan por equipe)
