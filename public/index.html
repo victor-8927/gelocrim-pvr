@@ -425,7 +425,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="kc-title">3 &#8212; Tempo operacional</div>
     <div class="tempo-info">07:00&#8594;12:00 &nbsp;|&nbsp; <span style="color:var(--tx3)">12:00&#8594;13:12 intervalo</span> &nbsp;|&nbsp; 13:12&#8594;17:00 &nbsp;|&nbsp; Operacao: <span id="vt-ativ" style="color:rgba(192,132,252,.8);font-weight:700">---</span> &nbsp;|&nbsp; Janela: <span id="vt-tot" style="color:var(--tx2);font-weight:700">---</span><span id="vt-int" style="display:none"></span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
-      <div class="dc-small"><div class="dl-small">Disponivel</div><div class="dv-small" id="vt-disp" style="color:var(--tx2)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-disp-s">equipes x 10h</div></div>
+      <div class="dc-small"><div class="dl-small">Disponivel</div><div class="dv-small" id="vt-disp" style="color:var(--tx2)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-disp-s">equipes x 8h48</div></div>
       <div class="dc-small"><div class="dl-small">Planejado</div><div class="dv-small" id="vt-plan" style="color:rgba(192,132,252,.8)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-plan-s">Fusion</div></div>
       <div class="dc-small"><div class="dl-small">Realizado</div><div class="dv-small" id="vt-real" style="color:var(--gr)">---</div><div style="font-size:7px;color:var(--tx3)" id="vt-real-s">atual</div><div id="pct-tempo" style="margin-top:5px;min-height:22px"></div></div>
     </div>
@@ -3070,7 +3070,7 @@ function renderGer(){
     var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
     if(hRR){realMinG+=hRR-hSP;nRegG++;}
   });
-  var dispMinG=nEqG*600;
+  var dispMinG=nEqG*528; // 8h48 por equipe
   var difTempoG=realMinG-dispMinG;
   document.getElementById('ger-pvr').innerHTML=
     '<div style="margin-bottom:6px">&#128230; Peso: <b style="color:rgba(0,194,255,.7)">'+fN(pp)+' kg</b> plan. → <b style="color:var(--gr)">'+fN(pr)+' kg</b> real <span class="badge '+(Math.round(pr/pp*100)>=95?'b-ok':Math.round(pr/pp*100)>=80?'b-warn':'b-bad')+'">'+Math.round(pr/pp*100)+'%</span>'+(pesoCan?'  <span class="badge b-warn">❌ -'+fN(pesoCan)+' kg canc.</span>':'')+'</div>'+
