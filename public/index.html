@@ -1370,10 +1370,16 @@ function renderKPIs(){
     var hRPs=cargas.map(function(c){return c.h_ret_plan?hm2min(c.h_ret_plan):null;}).filter(Boolean);
     if(hRPs.length){
       var hRP=Math.max.apply(null,hRPs);
-      planMin+=hRP-hSP;
+      var minBruto=hRP-hSP;
+      // Descontar intervalo de almoço (1h12=72min) se janela cobre 12:00-13:12
+      var almoco=0;
+      var ALMOCO_INI=hm2min('12:00'), ALMOCO_FIM=hm2min('13:12');
+      if(hSP<=ALMOCO_INI && hRP>=ALMOCO_FIM) almoco=72;
+      else if(hSP<=ALMOCO_INI && hRP>ALMOCO_INI) almoco=Math.min(72,hRP-ALMOCO_INI);
+      planMin+=(minBruto-almoco);
       nPlan++;
     } else {
-      // Sem Fusion: planejado = 8h48 por equipe
+      // Sem Fusion: planejado = 8h48 por equipe (10h - 1h12 almoço)
       planMin+=528;
       nPlan++;
     }
