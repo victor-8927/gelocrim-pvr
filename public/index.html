@@ -2654,6 +2654,7 @@ function importFusion(inp){
       });
       var ultimoDia=Object.keys(diasImport).sort().pop();
       st.textContent=nCargas+' cargas importadas';
+      saveLocal(); // Salvar antes de recarregar — preserva dados do Encerramento+Fusion
       var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
       if(ultimoDia)selDia(ultimoDia);
     }catch(err){st.textContent='Erro: '+err.message;console.error(err);}
@@ -2770,6 +2771,7 @@ function importEnc(inp){
       if(!LD[alvo])LD[alvo]={c_p:[],c_k:[],c_t:[]};
       sbSaveDia(alvo);
       st.textContent=totalGeral.toLocaleString('pt-BR')+' kg (rotas: '+totalRotas.toLocaleString('pt-BR')+' | eventos: '+(totalCon+totalEv).toLocaleString('pt-BR')+')';
+      saveLocal(); // Salvar Encerramento antes de qualquer coisa
       // Atualizar navegação e selecionar o dia importado
       var meses=getMeses();
       MES=meses[meses.length-1];
