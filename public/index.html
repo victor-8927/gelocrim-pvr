@@ -2634,6 +2634,7 @@ function importEnc(inp){
         var motAtual='',rotaAtual='';
         rows.slice(hdr+1).forEach(function(row){
           var rota=String(row[0]||'').trim();
+          if(rota)rotaAtual=rota; // acumular rota quando célula não está vazia
           var vda=String(row[1]||'').trim();
           var nome=String(row[6]||row[5]||'').trim(); // NOME (col 6)
           var oc=String(row[8]||row[7]||'').trim(); // Nº ROMANEIO (col 8) ou CÓD (col 7)
@@ -2644,7 +2645,7 @@ function importEnc(inp){
           if(!p)return;
           // Evento = ROTA 822 pura (sem substituição) + CONSIGNADA
           // ROTA 822 (804) = substituindo rota 804 = rota normal
-          var isEvento=((tipo.indexOf('CONSIG')>=0||tipo.indexOf('COSIG')>=0)&&rota_atual.toUpperCase().indexOf('822')>=0&&!/\(\d+\)/.test(rota_atual));
+          var isEvento=((tipo.indexOf('CONSIG')>=0||tipo.indexOf('COSIG')>=0)&&rotaAtual.toUpperCase().indexOf('822')>=0&&!/\(\d+\)/.test(rotaAtual));
           if(isEvento){
             totalCon+=p;
             eventos.push({rota:rota||'ROTA 822',vda:vda,motorista:nome,oc:oc,peso:p,obs:obs});
