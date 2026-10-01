@@ -1127,17 +1127,30 @@ async function sbLoadDia(dia){
     if(!r1.ok||!r2.ok)return;
     var equipes=await r1.json();var cargas=await r2.json();
     if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};
-    if(!D[dia])D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:true,equipes:{}};
+
+    // Se D[dia] já foi preenchido pelo Encerramento — só carregar LE/LC (dados reais)
+    // NUNCA sobrescrever estrutura que vem do Encerramento
+    var temEncerramento = D[dia]&&Object.keys(D[dia].equipes||{}).length>0;
+
     equipes.forEach(function(e){
+      // Sempre carregar dados reais da equipe (hodômetros, horários reais)
       LE[dia][e.motorista]={hod_ini:e.hod_ini||'',hod_ret:e.hod_ret||'',km_real:e.km_real,h_ret_real:e.h_ret_real||'',ok:e.ok||false};
-      if(!D[dia].equipes[e.motorista])
-        D[dia].equipes[e.motorista]={cargas:[],vdas:e.vdas||[],equipe:e.equipe||[e.motorista],km_plan:+e.km_plan||0,peso_plan:+e.peso_plan||0,h_saida_plan:e.h_saida_plan||'07:00'};
+      // Só criar estrutura da equipe se não existe (Encerramento não foi importado)
+      if(!temEncerramento){
+        if(!D[dia])D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:true,equipes:{}};
+        if(!D[dia].equipes[e.motorista])
+          D[dia].equipes[e.motorista]={cargas:[],vdas:e.vdas||[],equipe:e.equipe||[e.motorista],km_plan:+e.km_plan||0,peso_plan:+e.peso_plan||0,h_saida_plan:e.h_saida_plan||'07:00'};
+      }
     });
     cargas.forEach(function(c){
+      // Sempre carregar dados reais da carga
       LC[dia][c.carga_id]={peso_real:c.peso_real,hod_ini:c.hod_ini||'',hod_ret:c.hod_ret||'',h_saida_real:c.h_saida_real||'',h_ret_real:c.h_ret_real||'',cancelada:c.cancelada||false,ok:c.ok||false,cancel_motivo:c.obs||'',motivos:c.motivos||{}};
-      var eq=D[dia].equipes[c.motorista];
-      if(eq&&!eq.cargas.find(function(x){return x.id===c.carga_id;})){
-        eq.cargas.push({id:c.carga_id,rota:c.rota||'',vda:c.vda||'',km_plan:+c.km_plan||0,peso_plan:+c.peso_plan||0,h_saida_plan:c.h_saida_plan||'07:00',h_ret_plan:c.h_ret_plan||null,h_saida_real:c.h_saida_real||null,h_ret_real:c.h_ret_real||null,tipo:c.tipo||'1carga'});
+      // Só criar carga se não existe (Encerramento não foi importado)
+      if(!temEncerramento&&D[dia]){
+        var eq=D[dia].equipes[c.motorista];
+        if(eq&&!eq.cargas.find(function(x){return x.id===c.carga_id;})){
+          eq.cargas.push({id:c.carga_id,rota:c.rota||'',vda:c.vda||'',km_plan:+c.km_plan||0,peso_plan:+c.peso_plan||0,h_saida_plan:c.h_saida_plan||'07:00',h_ret_plan:c.h_ret_plan||null,tipo:c.tipo||'1carga'});
+        }
       }
     });
   }catch(e){console.warn('sbLoadDia:',e);}
