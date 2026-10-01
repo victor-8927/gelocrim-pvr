@@ -2573,103 +2573,94 @@ function importFusion(inp){
   reader.onload=function(e){
     try{
       var wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-      var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'dd/mm/yyyy hh:mm'});
-      var diasImport={};var nCargas=0;
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'dd/mm/yyyy hh:mm'});
+      var nCargas=0;
+      var diasAtualizados={};
+
       rows.slice(2).forEach(function(row){
-        var cid=String(row[0]||'').trim();if(!cid||cid.toUpperCase()==='TOTAL'||!/^\d+$/.test(cid))return;
-        function parseDT(v){if(!v)return null;var s=String(v).trim();var m1=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);if(m1)return{h:m1[4]+':'+m1[5],d:m1[3]+'-'+m1[2]+'-'+m1[1]};var m2=s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);if(m2)return{h:m2[4]+':'+m2[5],d:m2[1]+'-'+m2[2]+'-'+m2[3]};return null;}
-        var dt=parseDT(row[11]),dtS=parseDT(row[12]),dtF=parseDT(row[13]);if(!dt)return;
-        // Usar nome completo do motorista (não só primeiro nome)
-        var dia=dt.d,mot=String(row[9]||'').trim(),vda=String(row[10]||'').trim().replace(/ /g,'');
-        // Ignorar linha TOTAL
-        if(mot.toUpperCase()==='TOTAL'||mot==='')return;
-        var km=Math.round(parseFloat(String(row[7]||'0').replace(',','.'))*10)/10;
-        var peso=parseFloat(String(row[3]||'0').replace('.','').replace(',','.'));
-        var equipe=[mot];[16,17,18,19].forEach(function(ci){var aj=String(row[ci]||'').trim();if(aj&&aj!=='None'&&aj!==''&&equipe.indexOf(aj)<0)equipe.push(aj);});
-        var hSP=dt.h;
-        // h_ret_plan = DATA TERMINO mas só se for do mesmo dia e > h_saida_plan
-        var hRP=null;
-        if(dtF&&dtF.d===dia&&dtF.h>hSP)hRP=dtF.h;
-        // DATA TERMINO no dia seguinte = retorno interior (rota 811) — registrar mas não usar como plan do mesmo dia
-        var hSR=dtS?dtS.h:null;
-        // DATA SAIDA REAL inválida se < 5 min da DATA plan termino
-        if(dtS&&dtF&&dtF.d===dia){
-          var diffMin=0;
-          var sp=dtF.h.split(':'),ss=dtS.h?dtS.h.split(':'):null;
-          if(ss){diffMin=Math.abs((+sp[0]*60+ +sp[1])-(+ss[0]*60+ +ss[1]));}
-          if(diffMin<5)hSR=null; // dado inválido
+        var cid=String(row[0]||'').trim();
+        if(!cid||cid.toUpperCase()==='TOTAL'||!/^\d+$/.test(cid))return;
+
+        function parseDT(v){
+          if(!v)return null;
+          var s=String(v).trim();
+          var m1=s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+          if(m1)return{h:m1[4]+':'+m1[5],d:m1[3]+'-'+m1[2]+'-'+m1[1]};
+          var m2=s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+          if(m2)return{h:m2[4]+':'+m2[5],d:m2[1]+'-'+m2[2]+'-'+m2[3]};
+          return null;
         }
-        var hRR=(hSR&&dtF&&dtF.d===dia&&dtF.h>hSP)?dtF.h:null;
-        var tipo=parseInt(hSP)>=10?'recarga':'1carga';
-        if(!diasImport[dia])diasImport[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:true,equipes:{}};
-        var Dd=diasImport[dia];
-        // Fusion NUNCA cria equipe nova se já existe pelo Encerramento
-        // Tentar cruzar pelo romaneio para encontrar motorista correto
-        var motEnc=null;
-        if(D[dia]&&D[dia].equipes){
+
+        var dt=parseDT(row[11]);
+        var dtF=parseDT(row[13]);
+        if(!dt)return;
+
+        var dia=dt.d;
+        var hSP=dt.h; // h_saida_plan
+        var hRP=(dtF&&dtF.d===dia&&dtF.h>hSP)?dtF.h:null; // h_ret_plan
+        var km=Math.round(parseFloat(String(row[7]||'0').replace(',','.'))*10)/10;
+        var motFusion=String(row[9]||'').trim();
+        if(!motFusion||motFusion.toUpperCase()==='TOTAL')return;
+
+        // Encerramento deve existir — Fusion só complementa
+        if(!D[dia]||!D[dia].equipes)return;
+
+        // Cruzar pelo romaneio (id da carga)
+        var motReal=null;
+        Object.keys(D[dia].equipes).forEach(function(m){
+          (D[dia].equipes[m].cargas||[]).forEach(function(c){
+            if(String(c.id)===String(cid))motReal=m;
+          });
+        });
+
+        // Se não achou pelo romaneio, tentar pelo primeiro nome
+        if(!motReal){
+          var nomFus=motFusion.split(' ')[0].toUpperCase();
           Object.keys(D[dia].equipes).forEach(function(m){
-            (D[dia].equipes[m].cargas||[]).forEach(function(c){
-              if(String(c.id)===String(cid))motEnc=m;
-            });
+            if(m.split(' ')[0].toUpperCase()===nomFus)motReal=m;
           });
         }
-        // ── FUSION OPERA DIRETAMENTE NO D[] DO ENCERRAMENTO ──
-        // Nunca cria estrutura nova — só complementa o que já existe
-        var mot=motEnc||(findEquipe(dia,mot)||mot);
-        
-        // Se não tem Encerramento para este dia, ignorar
-        if(!D[dia]||!D[dia].equipes) return;
-        
-        // Encontrar equipe no Encerramento pelo nome normalizado
-        var motReal=null;
-        var nomFus=mot.split(' ')[0].toUpperCase();
-        Object.keys(D[dia].equipes).forEach(function(m){
-          if(m.split(' ')[0].toUpperCase()===nomFus) motReal=m;
-        });
-        if(!motReal) return; // Equipe não existe no Encerramento — ignorar
-        
+
+        if(!motReal)return; // Equipe não existe no Encerramento — ignorar
+
         var E=D[dia].equipes[motReal];
-        
-        // Complementar dados da equipe
-        if(hSP&&(!E.h_saida_plan||E.h_saida_plan==='07:00')) E.h_saida_plan=hSP;
-        if(vda&&E.vdas.indexOf(vda)<0) E.vdas.push(vda);
+
+        // FUSION SÓ TRAZ: km_plan, h_saida_plan, h_ret_plan
+        // h_saida_plan da equipe — menor saída
+        if(hSP&&(!E.h_saida_plan||E.h_saida_plan==='07:00'))
+          E.h_saida_plan=hSP;
+
+        // km_plan do dia e da equipe
         E.km_plan=Math.round((E.km_plan+km)*10)/10;
-        if(!D[dia].km_plan) D[dia].km_plan=0;
+        if(!D[dia].km_plan)D[dia].km_plan=0;
         D[dia].km_plan=Math.round((D[dia].km_plan+km)*10)/10;
-        
-        // Capturar observação do Fusion
-        var obs='';
-        for(var oi=20;oi<row.length;oi++){if(row[oi]&&String(row[oi]).trim()){obs=String(row[oi]).trim();break;}}
-        
-        // Detectar interior
-        var isInterior=false;
-        var obsUp=obs.toUpperCase();
-        ['INTERIOR','IRANDUBA','CAREIRO','AUTAZES','FIGUEIREDO','RIO PRETO','ITAPIRANGA','811'].forEach(function(kw){if(obsUp.indexOf(kw)>=0||String(row[6]||'').toUpperCase().indexOf(kw)>=0)isInterior=true;});
-        if(parseInt(String(row[6]||'').match(/\d+/))===811)isInterior=true;
-        
-        // Complementar carga existente — NUNCA criar nova
+
+        // h_saida_plan e h_ret_plan na carga específica
         var cEnc=(E.cargas||[]).find(function(c){return String(c.id)===String(cid);});
         if(cEnc){
-          // Fusion só preenche o que está vazio
-          if(hRP&&!cEnc.h_ret_plan) cEnc.h_ret_plan=hRP;
-          if(hSP&&cEnc.h_saida_plan==='07:00') cEnc.h_saida_plan=hSP;
-          if(km&&!cEnc.km_plan) cEnc.km_plan=km;
-          cEnc.interior=isInterior;
-          cEnc.obs=obs||cEnc.obs;
+          if(hSP&&(!cEnc.h_saida_plan||cEnc.h_saida_plan==='07:00'))cEnc.h_saida_plan=hSP;
+          if(hRP&&!cEnc.h_ret_plan)cEnc.h_ret_plan=hRP;
+          if(km&&!cEnc.km_plan)cEnc.km_plan=km;
         }
+
+        diasAtualizados[dia]=true;
         nCargas++;
       });
-      // Fusion já operou diretamente em D[] — só garantir estruturas auxiliares
-      Object.keys(diasImport).forEach(function(dia){
+
+      // Garantir estruturas auxiliares
+      Object.keys(diasAtualizados).forEach(function(dia){
         if(!LE[dia])LE[dia]={};
         if(!LC[dia])LC[dia]={};
         if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};
       });
-      var ultimoDia=Object.keys(diasImport).sort().pop();
+
+      saveLocal();
       st.textContent=nCargas+' cargas importadas';
-      saveLocal(); // Salvar antes de recarregar — preserva dados do Encerramento+Fusion
+      var ultimoDia=Object.keys(diasAtualizados).sort().pop();
       var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
       if(ultimoDia)selDia(ultimoDia);
+
     }catch(err){st.textContent='Erro: '+err.message;console.error(err);}
     inp.value='';
   };
