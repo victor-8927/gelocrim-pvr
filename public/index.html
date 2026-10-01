@@ -2586,15 +2586,63 @@ function importFusion(inp){
         nCargas++;
       });
       Object.keys(diasImport).forEach(function(dia){
-        // Preservar peso_plan_pv e peso_rotas/eventos do Encerramento se já existirem
-        var pesoPV=D[dia]&&D[dia].peso_plan_pv||0;
-        var pesoRot=D[dia]&&D[dia].peso_rotas||0;
-        var pesoEv=D[dia]&&D[dia].peso_eventos||0;
-        var obsP=LD[dia]&&LD[dia].obs_p||'';
-        D[dia]=diasImport[dia];
-        // Restaurar peso do Encerramento (não sobrescrever com 0 do Fusion)
-        if(pesoPV>0){D[dia].peso_plan_pv=pesoPV;D[dia].peso_rotas=pesoRot;D[dia].peso_eventos=pesoEv;}
-        if(!LE[dia])LE[dia]={};if(!LC[dia])LC[dia]={};
+        // ── REGRA FUNDAMENTAL: Encerramento = fonte verdade. Fusion = complemento apenas ──
+        if(!D[dia]) D[dia]={mes:diasImport[dia].mes,km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:true,equipes:{}};
+        
+        // Atualizar km_plan do dia com soma do Fusion
+        D[dia].km_plan = diasImport[dia].km_plan;
+        
+        // Preservar peso do Encerramento — NUNCA sobrescrever
+        // Peso do Fusion não é usado — o Encerramento já tem o correto
+
+        // Processar equipes do Fusion
+        Object.keys(diasImport[dia].equipes).forEach(function(motFusion){
+          var EF = diasImport[dia].equipes[motFusion];
+          
+          // Encontrar equipe correspondente no Encerramento pelo nome normalizado
+          var motEnc = null;
+          var nomFus = motFusion.split(' ')[0].toUpperCase();
+          Object.keys(D[dia].equipes).forEach(function(m){
+            if(m.split(' ')[0].toUpperCase()===nomFus) motEnc=m;
+          });
+          
+          var mot = motEnc || motFusion;
+          
+          // Criar equipe se não existe (raro — Fusion sem Encerramento)
+          if(!D[dia].equipes[mot]){
+            D[dia].equipes[mot]={cargas:[],vdas:[],equipe:EF.equipe,km_plan:0,peso_plan:0,h_saida_plan:'07:00'};
+          }
+          
+          var E = D[dia].equipes[mot];
+          
+          // Atualizar apenas campos que Fusion complementa
+          // h_saida_plan — só se Encerramento não tem
+          if(EF.h_saida_plan && (!E.h_saida_plan || E.h_saida_plan==='07:00')){
+            E.h_saida_plan = EF.h_saida_plan;
+          }
+          
+          // VDAs — adicionar sem duplicar
+          (EF.vdas||[]).forEach(function(v){if(v&&E.vdas.indexOf(v)<0)E.vdas.push(v);});
+          
+          // km_plan da equipe vem do Fusion
+          E.km_plan = EF.km_plan;
+          
+          // Cargas — complementar h_ret_plan e km_plan em cargas existentes
+          (EF.cargas||[]).forEach(function(cF){
+            var cEnc = (E.cargas||[]).find(function(c){return String(c.id)===String(cF.id);});
+            if(cEnc){
+              // Fusion complementa: h_ret_plan, km_plan, h_saida_plan se vazio
+              if(cF.h_ret_plan && !cEnc.h_ret_plan) cEnc.h_ret_plan = cF.h_ret_plan;
+              if(cF.h_saida_plan && cEnc.h_saida_plan==='07:00') cEnc.h_saida_plan = cF.h_saida_plan;
+              if(cF.km_plan && !cEnc.km_plan) cEnc.km_plan = cF.km_plan;
+            }
+            // Carga nova no Fusion que não existe no Encerramento — não adicionar
+            // (Encerramento é a verdade — se não está lá, não saiu)
+          });
+        });
+
+        if(!LE[dia])LE[dia]={};
+        if(!LC[dia])LC[dia]={};
         if(!LD[dia])LD[dia]={c_p:[],c_k:[],c_t:[]};
       });
       var ultimoDia=Object.keys(diasImport).sort().pop();
