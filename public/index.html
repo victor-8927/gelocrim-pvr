@@ -2519,7 +2519,11 @@ function resetDia(){
       LC[c.dia][c.carga_id]={ok:c.ok||false,cancelada:c.cancelada||false,peso_real:c.peso_real||'',hod_ini:c.hod_ini||'',hod_ret:c.hod_ret||'',h_saida_real:c.h_saida_real||'',h_ret_real:c.h_ret_real||''};
     });
     saveLocal();
-    selDia(dia);
+    // Não chamar selDia — evita sbLoadDia duplicar cargas
+    DIA=dia;
+    buildDiaNav();
+    renderKPIs();
+    renderEquipes();
     alert('✅ Dia '+dia+' recarregado!');
   }).catch(function(e){alert('Erro: '+e.message);});
 }
