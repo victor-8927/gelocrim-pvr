@@ -2722,18 +2722,15 @@ function importFusion(inp){
         }
 
         var dt=parseDT(row[11]);
-        var dtSR=parseDT(row[12]); // DATA SAIDA REAL
-        var dtF=parseDT(row[13]);  // DATA TERMINO = retorno REAL (não planejado)
+        // DATA SAIDA REAL (col 12) e DATA TERMINO (col 13) = IGNORAR
+        // Fusion só fornece dados planejados — realizado vem da Portaria
         if(!dt)return;
 
         var dia=dt.d;
-        var hSP=dt.h; // h_saida_plan = DATA planejada
-        // h_ret_plan NÃO vem do Fusion — Fusion só tem retorno real
-        // Usar null para h_ret_plan — o sistema usará o padrão da rota
-        var hRP=null;
-        // h_saida_real e h_ret_real vêm do Fusion
-        var hSR=dtSR?dtSR.h:null; // saída real
-        var hRR=(dtF&&dtF.h)?dtF.h:null; // retorno real
+        var hSP=dt.h; // h_saida_plan = única informação de tempo do Fusion
+        var hRP=null; // h_ret_plan não existe no Fusion
+        var hSR=null; // realizado vem da Portaria
+        var hRR=null; // realizado vem da Portaria
         var km=Math.round(parseFloat(String(row[7]||'0').replace(',','.'))*10)/10;
         var motFusion=String(row[9]||'').trim();
         if(!motFusion||motFusion.toUpperCase()==='TOTAL')return;
@@ -2793,11 +2790,7 @@ function importFusion(inp){
           if(hSP&&(!cEnc.h_saida_plan||cEnc.h_saida_plan==='07:00'))cEnc.h_saida_plan=hSP;
           // KM planejado
           if(km&&!cEnc.km_plan)cEnc.km_plan=km;
-          // Dados REAIS do Fusion (saída real e retorno real)
-          if(!LC[dia])LC[dia]={};
-          if(!LC[dia][cid])LC[dia][cid]={};
-          if(hSR&&!LC[dia][cid].h_saida_real)LC[dia][cid].h_saida_real=hSR;
-          if(hRR&&!LC[dia][cid].h_ret_real)LC[dia][cid].h_ret_real=hRR;
+          // Realizado vem exclusivamente da Portaria — Fusion não toca em LC
         }
 
         diasAtualizados[dia]=true;
