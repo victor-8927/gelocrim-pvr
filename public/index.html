@@ -2743,7 +2743,22 @@ function importFusion(inp){
           });
         });
 
-        // Se não achou pelo romaneio, tentar pelo primeiro nome
+        // Se não achou pelo romaneio, tentar pelo VDA/placa
+        if(!motReal){
+          var vdaFus=String(row[10]||'').trim().replace(/ /g,'').toUpperCase();
+          if(vdaFus){
+            Object.keys(D[dia].equipes).forEach(function(m){
+              (D[dia].equipes[m].vdas||[]).forEach(function(v){
+                if(v&&v.toString().toUpperCase().replace(/ /g,'')===vdaFus)motReal=m;
+              });
+              // Também cruzar pelo VDA nas cargas
+              (D[dia].equipes[m].cargas||[]).forEach(function(c){
+                if(c.vda&&c.vda.toString().toUpperCase().replace(/ /g,'')===vdaFus)motReal=m;
+              });
+            });
+          }
+        }
+        // Último recurso: primeiro nome
         if(!motReal){
           var nomFus=motFusion.split(' ')[0].toUpperCase();
           Object.keys(D[dia].equipes).forEach(function(m){
