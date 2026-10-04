@@ -1413,8 +1413,13 @@ function renderKPIs(){
     var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
     var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
     if(hRR===null)return;
-    // Tempo real = retorno real - saída planejada (base 07:00)
-    realMin+=hRR-hSP;nReg++;
+    // Tempo real = retorno real - saída real (ou planejada se não tem real)
+    var hSBase = hSR!==null ? hSR : hSP;
+    var minBrutoR = hRR - hSBase;
+    // Descontar almoço se janela cobre 12:00-13:12
+    var almocoR=0;
+    if(hSBase<=720&&hRR>=792)almocoR=72; // 720=12:00 792=13:12
+    realMin+=(minBrutoR-almocoR);nReg++;
     if(hRR<=LIMITE)nOkT++;else nOv++;
     // Atraso saída
     var atraso=hSR!==null?Math.max(0,hSR-hSP):0;
