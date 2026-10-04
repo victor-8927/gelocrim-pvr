@@ -1215,9 +1215,41 @@ async function selDia(dia){
   var lb=document.getElementById('lock-bar');
   if(ld.locked){lb.classList.add('on');document.getElementById('lock-info').textContent='Trancado em '+(ld.lock_ts||'');}
   else lb.classList.remove('on');
-  document.getElementById('obs-p').value=ld.obs_p||'';
-  document.getElementById('obs-k').value=ld.obs_k||'';
-  document.getElementById('obs-t').value=ld.obs_t||'';
+  // Agregar automaticamente observações dos cards individuais
+  var obsP=[],obsK=[],obsT=[];
+  var eq=D[DIA]&&D[DIA].equipes||{};
+  Object.keys(eq).forEach(function(mot){
+    var le=(LE[DIA]||{})[mot]||{};
+    // Obs de equipe — motivo de atraso na saída → Tempo
+    if(le.motivo_atraso&&le.motivo_atraso!=='Outros'){
+      obsT.push('- '+mot.split(' ')[0]+': '+le.motivo_atraso);
+    }
+    // Obs escritas na equipe → Tempo
+    if(le.obs_equipe&&le.obs_equipe.trim()){
+      obsT.push('- '+mot.split(' ')[0]+': '+le.obs_equipe.trim());
+    }
+    // Obs das cargas → Peso e KM
+    (eq[mot].cargas||[]).forEach(function(c){
+      var lc=(LC[DIA]||{})[c.id]||{};
+      if(lc.obs_carga&&lc.obs_carga.trim()){
+        obsP.push('- '+mot.split(' ')[0]+' ('+c.rota+'): '+lc.obs_carga.trim());
+      }
+      if(lc.cancel_motivo&&lc.cancel_motivo.trim()){
+        obsP.push('- '+mot.split(' ')[0]+' CANCELADA: '+lc.cancel_motivo.trim());
+      }
+    });
+  });
+  // Mesclar obs manuais com as agregadas
+  var obsManualP=ld.obs_p||'';
+  var obsManualK=ld.obs_k||'';
+  var obsManualT=ld.obs_t||'';
+  var obsAgregadaP=obsP.length?obsP.join('\n'):'';
+  var obsAgregadaK=obsK.length?obsK.join('\n'):'';
+  var obsAgregadaT=obsT.length?obsT.join('\n'):'';
+  // Mostrar: manual primeiro, depois agregado (sem duplicar)
+  document.getElementById('obs-p').value=obsManualP||(obsAgregadaP)||'';
+  document.getElementById('obs-k').value=obsManualK||(obsAgregadaK)||'';
+  document.getElementById('obs-t').value=obsManualT||(obsAgregadaT)||'';
   buildChips('p');buildChips('k');buildChips('t');
   renderKPIs();renderEquipes();
   // Carregar do Supabase e atualizar
@@ -2480,9 +2512,10 @@ function selMotivo(el){
   document.querySelectorAll('.mot-list.open').forEach(function(e){e.classList.remove('open');});
 }
 function setMotivoObs(cid,campo,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};if(!LC[DIA][cid].motivos)LC[DIA][cid].motivos={};LC[DIA][cid].motivos[campo]=v;saveLocal();}
-function setObsCarga(cid,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].obs_carga=v;saveLocal();}
-function setMotivoEq(mot,m){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].motivo_atraso=LE[DIA][mot].motivo_atraso===m?'':m;renderEquipes();saveLocal();sbSaveDia(DIA);}
-function setObsEq(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].obs_equipe=v;saveLocal();sbSaveDia(DIA);}
+function setObsCarga(cid,v){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].obs_carga=v;renderKPIs();saveLocal();}
+function setMotivoEq(mot,m){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].motivo_atraso=LE[DIA][mot].motivo_atraso===m?'':m;renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
+function setObsEquipe(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].obs_equipe=v;renderKPIs();saveLocal();}
+function setObsEq(mot,v){if(!DIA)return;if(!LE[DIA][mot])LE[DIA][mot]={};LE[DIA][mot].obs_equipe=v;renderKPIs();saveLocal();sbSaveDia(DIA);}
 function togCancel(cid){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].cancelada=!LC[DIA][cid].cancelada;if(LC[DIA][cid].cancelada){LC[DIA][cid].ok=false;if(!LC[DIA][cid].cancel_motivo)LC[DIA][cid].cancel_motivo='';}renderEquipes();renderKPIs();saveLocal();sbSaveDia(DIA);}
 function setCancelMotivo(cid,m){if(!DIA)return;if(!LC[DIA][cid])LC[DIA][cid]={};LC[DIA][cid].cancel_motivo=LC[DIA][cid].cancel_motivo===m?'':m;renderEquipes();saveLocal();sbSaveDia(DIA);}
 function to24h(v){
