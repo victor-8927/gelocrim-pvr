@@ -401,7 +401,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="bar-lbl"><span id="lpp">---</span><span id="lpr">---</span></div>
     <div class="bar-wrap"><div class="bar-bg" id="bpp" style="background:rgba(0,194,255,.3)"></div><div class="bar-r" id="bpr" style="background:#4DFFC3"></div></div>
     <div id="bdg-p"></div>
-    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-p"></div><div class="obs-label">📝 Anotações — Peso</div><textarea class="obs-caderno" id="obs-p" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea></div>
+    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-p"></div><div class="obs-label">📝 Anotações — Peso</div><textarea class="obs-caderno" id="obs-p" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea>
+  <button onclick="analisarObs('p')" style="margin-top:4px;width:100%;padding:5px;border-radius:6px;background:rgba(0,194,255,.15);color:var(--cy);border:1px solid rgba(0,194,255,.3);font-size:9px;font-weight:700;cursor:pointer;font-family:var(--ff)">🤖 Analisar e classificar</button>
+  <div id="agente-p" style="font-size:9px;color:var(--tx3);margin-top:4px;min-height:16px"></div></div>
   </div>
   <!-- KM -->
   <div class="kc k">
@@ -418,7 +420,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="bar-wrap"><div class="bar-bg" id="bkp" style="background:rgba(255,209,102,.3)"></div><div class="bar-r" id="bkr" style="background:#FFD166"></div></div>
     <div id="km-alerts"></div>
     <div id="bdg-k"></div>
-    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-k"></div><div class="obs-label">📝 Anotações — KM</div><textarea class="obs-caderno" id="obs-k" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea></div>
+    <div class="motivo"><div class="ml">Motivo</div><div class="chips" id="ch-k"></div><div class="obs-label">📝 Anotações — KM</div><textarea class="obs-caderno" id="obs-k" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea>
+  <button onclick="analisarObs('k')" style="margin-top:4px;width:100%;padding:5px;border-radius:6px;background:rgba(255,209,102,.15);color:var(--am);border:1px solid rgba(255,209,102,.3);font-size:9px;font-weight:700;cursor:pointer;font-family:var(--ff)">🤖 Analisar e classificar</button>
+  <div id="agente-k" style="font-size:9px;color:var(--tx3);margin-top:4px;min-height:16px"></div></div>
   </div>
   <!-- TEMPO -->
   <div class="kc t">
@@ -435,7 +439,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div id="bdg-t" style="margin-bottom:6px"></div>
     <div id="vt-analise" style="margin-bottom:6px"></div>
-    <div class="motivo"><div class="ml">Motivo atraso saida</div><div class="chips" id="ch-t"></div><div class="obs-label">📝 Anotações — Tempo</div><textarea class="obs-caderno" id="obs-t" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea></div>
+    <div class="motivo"><div class="ml">Motivo atraso saida</div><div class="chips" id="ch-t"></div><div class="obs-label">📝 Anotações — Tempo</div><textarea class="obs-caderno" id="obs-t" placeholder="1. Descreva o motivo aqui&#10;2. Adicione mais detalhes&#10;3. Continue anotando..." onchange="saveObs()"></textarea>
+  <button onclick="analisarObs('t')" style="margin-top:4px;width:100%;padding:5px;border-radius:6px;background:rgba(77,255,195,.15);color:var(--gr);border:1px solid rgba(77,255,195,.3);font-size:9px;font-weight:700;cursor:pointer;font-family:var(--ff)">🤖 Analisar e classificar</button>
+  <div id="agente-t" style="font-size:9px;color:var(--tx3);margin-top:4px;min-height:16px"></div></div>
   </div>
 </div>
 
@@ -1134,7 +1140,7 @@ async function sbLoadDia(dia){
 
     equipes.forEach(function(e){
       // Sempre carregar dados reais da equipe (hodômetros, horários reais)
-      LE[dia][e.motorista]={hod_ini:e.hod_ini||'',hod_ret:e.hod_ret||'',km_real:e.km_real,h_ret_real:e.h_ret_real||'',ok:e.ok||false};
+      LE[dia][e.motorista]={hod_ini:e.hod_ini||'',hod_ret:e.hod_ret||'',km_real:e.km_real,h_saida_real:e.h_saida_real||'',h_ret_real:e.h_ret_real||'',ok:e.ok||false};
       // Só criar estrutura da equipe se não existe (Encerramento não foi importado)
       if(!temEncerramento){
         if(!D[dia])D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,has_prog:true,equipes:{}};
@@ -2531,6 +2537,81 @@ function resetDia(){
     renderEquipes();
     alert('✅ Dia '+dia+' recarregado!');
   }).catch(function(e){alert('Erro: '+e.message);});
+}
+
+// ── AGENTE ANALÍTICO ──
+var CHIPS_MAP={
+  p:['Falta producao','Cliente fechado','Transito','Avaria produto','Recarga parcial','Evento extra','Outros'],
+  k:['Rota alternativa','Evento extra','Retorno consig.','Manutencao','Transito','Rio Preto Eva','Outros'],
+  t:['Carregamento atrasado','Falta de produto','Problema no carro','Falta de equipe','Producao atrasada','Evento extra','Outros']
+};
+
+async function analisarObs(tipo){
+  var obs=document.getElementById('obs-'+tipo);
+  var resultado=document.getElementById('agente-'+tipo);
+  if(!obs||!obs.value.trim()){
+    if(resultado)resultado.textContent='Escreva uma observação primeiro.';
+    return;
+  }
+  if(resultado){resultado.textContent='🤖 Analisando...';resultado.style.color='var(--cy)';}
+  
+  var texto=obs.value.trim();
+  var chips=CHIPS_MAP[tipo];
+  var nomes={'p':'Volume/Peso','k':'KM percorrido','t':'Tempo operacional'};
+  
+  var prompt='Você é um assistente logístico da Amazon Indústria de Gelo em Manaus.\n'+
+    'Analise a observação abaixo sobre o indicador "'+nomes[tipo]+'" e:\n'+
+    '1. Identifique a(s) causa(s) principal(is)\n'+
+    '2. Classifique em uma ou mais das categorias: '+chips.join(', ')+'\n'+
+    '3. Estime o impacto (alto/médio/baixo)\n'+
+    '4. Sugira ação corretiva em uma linha\n\n'+
+    'Observação: "'+texto+'"\n\n'+
+    'Responda em JSON com campos: causas (array das categorias), impacto, acao';
+
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:300,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    var data=await resp.json();
+    var txt=data.content&&data.content[0]&&data.content[0].text||'';
+    
+    // Tentar parsear JSON
+    var json=null;
+    try{
+      var m=txt.match(/\{[\s\S]*\}/);
+      if(m)json=JSON.parse(m[0]);
+    }catch(e){}
+    
+    if(json){
+      // Marcar chips automaticamente
+      var ld=LD[DIA]||{};
+      var chipsKey='c_'+tipo;
+      if(!ld[chipsKey])ld[chipsKey]=[];
+      (json.causas||[]).forEach(function(c){
+        if(chips.indexOf(c)>=0&&ld[chipsKey].indexOf(c)<0)
+          ld[chipsKey].push(c);
+      });
+      LD[DIA]=ld;
+      buildChips(tipo);
+      saveLocal();
+      sbSaveDia(DIA);
+      
+      if(resultado){
+        resultado.style.color='var(--gr)';
+        resultado.innerHTML='✅ Classificado: <b>'+( json.causas||[]).join(', ')+'</b> | Impacto: '+(json.impacto||'?')+' | '+( json.acao||'');
+      }
+    }else{
+      if(resultado){resultado.style.color='var(--am)';resultado.textContent='⚠️ '+txt.substring(0,120);}
+    }
+  }catch(e){
+    if(resultado){resultado.style.color='var(--rd)';resultado.textContent='Erro: '+e.message;}
+  }
 }
 
 function encerrar(){
