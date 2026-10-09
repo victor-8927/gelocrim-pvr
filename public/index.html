@@ -33,12 +33,19 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
 .sync-btn{padding:4px 10px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid rgba(0,194,255,.4);background:rgba(0,194,255,.1);color:var(--cy);font-family:var(--mo)}
 
 /* IMPORTADORES */
-.imp{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px}
+.imp{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:12px}
 .imp-btn{border:1.5px dashed rgba(0,194,255,.3);border-radius:10px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:var(--tx2);transition:all .15s;background:var(--s0)}
 .imp-btn:hover{border-color:var(--cy);background:rgba(0,194,255,.05)}
 .imp-btn .ic{font-size:18px}
 .imp-st{font-size:8px;color:var(--gr);margin-top:2px;font-family:var(--mo)}
 .exp-btn{border:1px solid var(--b);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:var(--tx2);background:var(--s0)}
+/* Bloco Fusion — agrupa xlsx + botão Supabase */
+.fusion-wrap{display:flex;flex-direction:column;gap:5px}
+.fusion-sb-btn{border:1.5px solid rgba(0,194,255,.5);border-radius:10px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--cy);background:rgba(0,194,255,.07);transition:all .15s}
+.fusion-sb-btn:hover{background:rgba(0,194,255,.15);border-color:var(--cy)}
+.fusion-sb-btn .ic{font-size:15px}
+.fusion-sb-btn.loading{opacity:.7;cursor:wait}
+@media(max-width:700px){.imp{grid-template-columns:1fr 1fr}.fusion-wrap{grid-column:span 2}}
 
 /* NAVEGAÇÃO */
 .mes-tabs{display:flex;gap:6px;margin-bottom:8px}
@@ -359,18 +366,30 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <!-- IMPORTADORES -->
 <div class="imp">
-  <div class="imp-btn" id="dz-f" onclick="document.getElementById('inp-f').click()">
-    <span class="ic">&#9889;</span>
-    <div><div>Fusion DMS .xlsx</div><div class="imp-st" id="st-f">arraste ou clique</div></div>
-  </div>
+  <!-- 1) Encerramento de Rotas -->
   <div class="imp-btn" id="dz-e" onclick="document.getElementById('inp-e').click()">
     <span class="ic">&#128203;</span>
-    <div><div>Encerramento .xlsx</div><div class="imp-st" id="st-e">arraste ou clique</div></div>
+    <div><div>Encerramento .xlsx</div><div class="imp-st" id="st-e">1º — base das equipes</div></div>
   </div>
+
+  <!-- 2) Fusion DMS — xlsx manual OU busca automática Supabase -->
+  <div class="fusion-wrap">
+    <div class="imp-btn" id="dz-f" onclick="document.getElementById('inp-f').click()" style="flex:1;padding:8px 12px">
+      <span class="ic" style="font-size:15px">&#9889;</span>
+      <div><div style="font-size:10px">Fusion DMS .xlsx</div><div class="imp-st" id="st-f">2º — upload manual</div></div>
+    </div>
+    <div class="fusion-sb-btn" id="btn-fusion-sb" onclick="buscarFusionSupabase()">
+      <span class="ic">&#9729;</span>
+      <div><div>Buscar Fusion (auto)</div><div class="imp-st" id="st-fsb" style="color:var(--cy)">sincronizado a cada 30 min</div></div>
+    </div>
+  </div>
+
+  <!-- 3) Portaria -->
   <div class="imp-btn" id="dz-port" onclick="abrirPortaria()" style="border-color:rgba(192,132,252,.3)">
     <span class="ic">&#128203;</span>
-    <div><div style="color:var(--pu)">Portaria</div><div class="imp-st" id="st-port">hodometros e horarios reais</div></div>
+    <div><div style="color:var(--pu)">Portaria</div><div class="imp-st" id="st-port">3º — hodômetros e horários reais</div></div>
   </div>
+
   <div class="exp-btn" onclick="exportar()">&#128190; Exportar</div>
 </div>
 <input type="file" id="inp-f" accept=".xlsx" style="display:none" onchange="importFusion(this)">
@@ -2735,8 +2754,14 @@ function importFusion(inp){
         var motFusion=String(row[9]||'').trim();
         if(!motFusion||motFusion.toUpperCase()==='TOTAL')return;
 
-        // Encerramento deve existir — Fusion só complementa
-        if(!D[dia]||!D[dia].equipes)return;
+        // Se Encerramento não foi importado ainda, criar estrutura mínima
+        // (Fusion pode chegar antes; os dados de equipes serão preenchidos depois)
+        if(!D[dia]){
+          D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:false,equipes:{}};
+        }
+        if(!D[dia].equipes)D[dia].equipes={};
+        // Só cruzar equipes se Encerramento já foi importado (equipes populadas)
+        if(!Object.keys(D[dia].equipes).length)return;
 
         // Cruzar pelo romaneio (id da carga)
         var motReal=null;
@@ -2814,6 +2839,139 @@ function importFusion(inp){
     inp.value='';
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ── FUSION VIA SUPABASE (busca automática) ────────────────────────────────────
+// Busca os romaneios da tabela fusion_romaneios pelo dia selecionado (DIA)
+// e aplica a mesma lógica de cruzamento do importFusion.
+async function buscarFusionSupabase(){
+  var stBtn=document.getElementById('btn-fusion-sb');
+  var stMsg=document.getElementById('st-fsb');
+  if(!DIA){stMsg.textContent='Selecione um dia primeiro';return;}
+  stBtn.classList.add('loading');stMsg.textContent='Buscando...';
+
+  try{
+    // Buscar romaneios do dia no Supabase
+    var url=SB_URL+'/rest/v1/fusion_romaneios?data_carga=eq.'+DIA+'&select=t10_id,data_carga,vda,placa,motorista_nome,km_total,data_inicio,data_prev_term,carga_erp&order=t10_id';
+    var r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    var rows=await r.json();
+
+    if(!rows||!rows.length){
+      stMsg.textContent='Sem dados para '+DIA;
+      stBtn.classList.remove('loading');
+      return;
+    }
+
+    var nCargas=0;
+    var diasAtualizados={};
+    var dia=DIA;
+
+    // Garantir estrutura mínima para o dia
+    if(!D[dia]){
+      D[dia]={mes:dia.substring(0,7),km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:false,equipes:{}};
+    }
+    if(!D[dia].equipes)D[dia].equipes={};
+
+    // Verificar se Encerramento foi importado (equipes populadas)
+    if(!Object.keys(D[dia].equipes).length){
+      stMsg.textContent='Importe o Encerramento primeiro';
+      stBtn.classList.remove('loading');
+      return;
+    }
+
+    rows.forEach(function(rom){
+      var cid=String(rom.t10_id||'').trim();
+      if(!cid)return;
+
+      var km=Math.round((parseFloat(rom.km_total)||0)*10)/10;
+
+      // h_saida_plan = data_inicio ou data_prev_term (apenas hora HH:MM)
+      function extrairHora(isoStr){
+        if(!isoStr)return null;
+        var m=isoStr.match(/T(\d{2}:\d{2})/);
+        if(m)return m[1];
+        var m2=isoStr.match(/\s(\d{2}:\d{2})/);
+        if(m2)return m2[1];
+        return null;
+      }
+      var hSP=extrairHora(rom.data_inicio)||extrairHora(rom.data_prev_term);
+
+      var motFusion=String(rom.motorista_nome||'').trim();
+      var vdaFus=String(rom.vda||'').trim().replace(/ /g,'').toUpperCase();
+
+      // Cruzar pelo id do romaneio (t10_id = id da carga no Encerramento)
+      var motReal=null;
+      Object.keys(D[dia].equipes).forEach(function(m){
+        (D[dia].equipes[m].cargas||[]).forEach(function(c){
+          if(String(c.id)===cid)motReal=m;
+        });
+      });
+
+      // Fallback: cruzar por VDA/placa
+      if(!motReal&&vdaFus){
+        Object.keys(D[dia].equipes).forEach(function(m){
+          (D[dia].equipes[m].vdas||[]).forEach(function(v){
+            if(v&&v.toString().toUpperCase().replace(/ /g,'')===vdaFus)motReal=m;
+          });
+          (D[dia].equipes[m].cargas||[]).forEach(function(c){
+            if(c.vda&&c.vda.toString().toUpperCase().replace(/ /g,'')===vdaFus)motReal=m;
+          });
+        });
+      }
+
+      // Último recurso: primeiro nome
+      if(!motReal&&motFusion){
+        var nomFus=motFusion.split(' ')[0].toUpperCase();
+        Object.keys(D[dia].equipes).forEach(function(m){
+          if(m.split(' ')[0].toUpperCase()===nomFus)motReal=m;
+        });
+      }
+
+      if(!motReal)return; // Equipe não encontrada no Encerramento
+
+      var E=D[dia].equipes[motReal];
+
+      // Aplicar h_saida_plan (menor horário planejado da equipe)
+      if(hSP&&(!E.h_saida_plan||E.h_saida_plan==='07:00'))
+        E.h_saida_plan=hSP;
+
+      // km_plan da equipe e do dia
+      E.km_plan=Math.round(((E.km_plan||0)+km)*10)/10;
+      if(!D[dia].km_plan)D[dia].km_plan=0;
+      D[dia].km_plan=Math.round((D[dia].km_plan+km)*10)/10;
+
+      // h_saida_plan e km_plan na carga específica
+      var cEnc=(E.cargas||[]).find(function(c){return String(c.id)===cid;});
+      if(cEnc){
+        if(hSP&&(!cEnc.h_saida_plan||cEnc.h_saida_plan==='07:00'))cEnc.h_saida_plan=hSP;
+        if(km&&!cEnc.km_plan)cEnc.km_plan=km;
+        // Realizado vem exclusivamente da Portaria
+      }
+
+      diasAtualizados[dia]=true;
+      nCargas++;
+    });
+
+    // Garantir estruturas auxiliares
+    Object.keys(diasAtualizados).forEach(function(d){
+      if(!LE[d])LE[d]={};
+      if(!LC[d])LC[d]={};
+      if(!LD[d])LD[d]={c_p:[],c_k:[],c_t:[]};
+    });
+
+    saveLocal();
+    var meses=getMeses();MES=meses[meses.length-1];buildMesTabs();buildDiaNav();
+    selDia(DIA);
+
+    stMsg.textContent=nCargas+' cargas ('+rows.length+' romaneios)';
+    stBtn.classList.remove('loading');
+
+  }catch(err){
+    stMsg.textContent='Erro: '+err.message;
+    console.error('[buscarFusionSupabase]',err);
+    stBtn.classList.remove('loading');
+  }
 }
 
 function importEnc(inp){
