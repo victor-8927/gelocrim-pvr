@@ -33,7 +33,7 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
 .sync-btn{padding:4px 10px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid rgba(0,194,255,.4);background:rgba(0,194,255,.1);color:var(--cy);font-family:var(--mo)}
 
 /* IMPORTADORES */
-.imp{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:12px}
+.imp{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:12px}
 .imp-btn{border:1.5px dashed rgba(0,194,255,.3);border-radius:10px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:var(--tx2);transition:all .15s;background:var(--s0)}
 .imp-btn:hover{border-color:var(--cy);background:rgba(0,194,255,.05)}
 .imp-btn .ic{font-size:18px}
@@ -45,7 +45,7 @@ html,body{background:var(--bg);color:var(--tx);font-family:var(--ff);min-height:
 .fusion-sb-btn:hover{background:rgba(0,194,255,.15);border-color:var(--cy)}
 .fusion-sb-btn .ic{font-size:15px}
 .fusion-sb-btn.loading{opacity:.7;cursor:wait}
-@media(max-width:700px){.imp{grid-template-columns:1fr 1fr}.fusion-wrap{grid-column:span 2}}
+@media(max-width:900px){.imp{grid-template-columns:1fr 1fr}.fusion-wrap{grid-column:span 2}}
 
 /* NAVEGAÇÃO */
 .mes-tabs{display:flex;gap:6px;margin-bottom:8px}
@@ -384,16 +384,29 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
   </div>
 
-  <!-- 3) Portaria -->
+  <!-- 3) Programação Inteligente -->
+  <div class="fusion-wrap" style="grid-column:auto">
+    <div class="imp-btn" id="dz-prog" onclick="document.getElementById('inp-prog').click()" style="flex:1;padding:8px 12px;border-color:rgba(255,180,0,.4)">
+      <span class="ic" style="font-size:15px">&#128196;</span>
+      <div><div style="color:#FFB400">Programação .xlsx</div><div class="imp-st" id="st-prog">ajudantes, pesos, obs</div></div>
+    </div>
+    <div class="fusion-sb-btn" id="btn-prog-sb" onclick="buscarProgSupabase()" style="background:rgba(255,180,0,.15);border-color:rgba(255,180,0,.4)">
+      <span class="ic">&#9729;</span>
+      <div><div style="color:#FFB400">Prog. (Supabase)</div><div class="imp-st" id="st-psb" style="color:var(--cy)">carrega do banco</div></div>
+    </div>
+  </div>
+
+  <!-- 4) Portaria -->
   <div class="imp-btn" id="dz-port" onclick="abrirPortaria()" style="border-color:rgba(192,132,252,.3)">
     <span class="ic">&#128203;</span>
-    <div><div style="color:var(--pu)">Portaria</div><div class="imp-st" id="st-port">3º — hodômetros e horários reais</div></div>
+    <div><div style="color:var(--pu)">Portaria</div><div class="imp-st" id="st-port">4º — hodômetros e horários reais</div></div>
   </div>
 
   <div class="exp-btn" onclick="exportar()">&#128190; Exportar</div>
 </div>
 <input type="file" id="inp-f" accept=".xlsx" style="display:none" onchange="importFusion(this)">
 <input type="file" id="inp-e" accept=".xlsx" style="display:none" onchange="importEnc(this)">
+<input type="file" id="inp-prog" accept=".xlsx" style="display:none" onchange="importProgramacao(this)">
 
 <!-- NAVEGAÇÃO -->
 <div class="mes-tabs" id="mes-tabs"></div>
@@ -3092,6 +3105,173 @@ function importEnc(inp){
     inp.value='';
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ── IMPORTAR PROGRAMAÇÃO INTELIGENTE ──
+// Lê a planilha GELOCRIM_Programacao_INTELIGENTE.xlsx e upsert em enc_programacao no Supabase
+function importProgramacao(inp){
+  var file=inp.files[0];if(!file)return;
+  var st=document.getElementById('st-prog');st.textContent='Lendo...';
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      // Aceitar "PROGRAMAÇÃO INTELIGENTE" ou primeira aba
+      var wsName=wb.SheetNames.find(n=>n.toUpperCase().includes('PROGRAMA'))||wb.SheetNames[0];
+      var ws=wb.Sheets[wsName];
+      var raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+
+      // ── Detectar data (célula P1 = índice coluna 15) ──
+      var dataRow=raw[0];
+      var dataVal=dataRow&&dataRow[15]; // col P = índice 15
+      var alvo=DIA;
+      if(dataVal){
+        // Pode ser número serial Excel ou string DD/MM/YYYY
+        if(typeof dataVal==='number'){
+          var d=new Date(Math.round((dataVal-25569)*86400*1000));
+          alvo=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        } else {
+          var m=String(dataVal).match(/(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/);
+          if(m) alvo=m[3]+'-'+m[2]+'-'+m[1];
+        }
+      }
+      if(!alvo){st.textContent='Selecione um dia ou preencha P1 na planilha';return;}
+
+      // ── Localizar linha de cabeçalho (linha com "ROTA") ──
+      var hdrIdx=raw.findIndex(r=>r&&r[0]&&String(r[0]).toUpperCase().trim()==='ROTA');
+      if(hdrIdx<0){st.textContent='Cabeçalho ROTA não encontrado';return;}
+
+      // ── Parsear blocos: 6 linhas por bloco (MANIFESTO..CONSIGNADA) + 1 vazia ──
+      var ORDENS_EXP=['MANIFESTO','PRE-VENDA','BONIFICAÇÃO','TROCAS','SALDO','CONSIGNADA'];
+      function toNum(v){if(v===null||v===undefined||v===''||v==='#DIV/0!')return 0;var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
+      function toStr(v){return v===null||v===undefined?'':String(v).trim();}
+
+      var records=[];
+      var currentRota=null,currentVda=null,currentMot=null,currentCap=null,currentAjud=null;
+      var dataStart=hdrIdx+1;
+
+      for(var i=dataStart;i<raw.length;i++){
+        var row=raw[i];
+        if(!row||row.every(v=>v===null||v===''||v===0))continue; // linha vazia = separador
+
+        // Cols: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11,M=12,N=13,O=14
+        var rota=toStr(row[0]);
+        var vda=toStr(row[1]);
+        var mot=toStr(row[2]);
+        var cap=toNum(row[3]);
+        var ajud=toStr(row[4]);
+        var ordem=toStr(row[5]).toUpperCase().replace('PRÉ-VENDA','PRE-VENDA');
+        var vol=toNum(row[6]);
+        var kg3=toNum(row[7]),kg5=toNum(row[8]),kg10=toNum(row[9]);
+        var kg20=toNum(row[10]),kg40=toNum(row[11]),kg50=toNum(row[12]);
+        var pesoTotal=toNum(row[13]);
+        var obs=toStr(row[14]);
+
+        // Campos de cabeçalho do bloco: ficam na 1ª linha (MANIFESTO) e propagam para as demais
+        if(rota) currentRota=rota;
+        if(vda) currentVda=vda;
+        if(mot) currentMot=mot;
+        if(cap) currentCap=cap;
+        if(ajud) currentAjud=ajud;
+
+        if(!ORDENS_EXP.includes(ordem))continue; // pula linhas sem tipo de ordem válido
+        if(!currentRota)continue;
+
+        records.push({
+          data_carga:alvo,
+          rota:currentRota,
+          vda:currentVda||null,
+          motorista:currentMot||null,
+          capacidade_kg:currentCap||null,
+          ajudantes:currentAjud||null,
+          ordem_tipo:ordem,
+          volume:vol,
+          kg_3:kg3,kg_5:kg5,kg_10:kg10,kg_20:kg20,kg_40:kg40,kg_50:kg50,
+          peso_total_kg:pesoTotal||kg3*3+kg5*5+kg10*10+kg20*20+kg40*40+kg50*50,
+          observacao:obs||null
+        });
+      }
+
+      if(!records.length){st.textContent='Nenhum dado encontrado na planilha';return;}
+      st.textContent='Enviando '+records.length+' linhas...';
+
+      // ── Upsert em Supabase (enc_programacao) ──
+      var url=SB_URL+'/rest/v1/enc_programacao';
+      var resp=await fetch(url,{
+        method:'POST',
+        headers:{
+          'apikey':SB_KEY,
+          'Authorization':'Bearer '+SB_KEY,
+          'Content-Type':'application/json',
+          'Prefer':'resolution=merge-duplicates'
+        },
+        body:JSON.stringify(records)
+      });
+      if(!resp.ok){var err=await resp.text();throw new Error('HTTP '+resp.status+' '+err);}
+
+      // ── Aplicar dados ao painel (ajudantes + peso por tipo) ──
+      if(!D[alvo])D[alvo]={mes:alvo.substring(0,7),km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:false,equipes:{}};
+      // Agrupar por rota para extrair ajudantes e peso total planejado
+      var rotaMap={};
+      records.forEach(function(rec){
+        if(!rotaMap[rec.rota])rotaMap[rec.rota]={ajudantes:rec.ajudantes,peso:0,vda:rec.vda};
+        rotaMap[rec.rota].peso+=rec.peso_total_kg||0;
+      });
+      // Associar ajudantes às equipes existentes (por VDA ou motorista)
+      var eqs=D[alvo].equipes||{};
+      Object.keys(rotaMap).forEach(function(rota){
+        var rm=rotaMap[rota];
+        // Tentar encontrar equipe pelo VDA
+        var motKey=Object.keys(eqs).find(function(k){
+          return (eqs[k].vda&&String(eqs[k].vda)===String(rm.vda))||
+                 (k&&rota&&k.toLowerCase()===rota.toLowerCase());
+        });
+        if(motKey&&rm.ajudantes){
+          eqs[motKey].ajudantes=rm.ajudantes;
+        }
+      });
+
+      saveLocal();
+      selDia(alvo);
+      st.textContent=records.length+' linhas → Supabase ✓ ('+Object.keys(rotaMap).length+' rotas)';
+    }catch(err){st.textContent='Erro: '+err.message;console.error('[importProgramacao]',err);}
+    inp.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── BUSCAR PROGRAMAÇÃO DO SUPABASE ──
+async function buscarProgSupabase(){
+  var stBtn=document.getElementById('btn-prog-sb');
+  var stMsg=document.getElementById('st-psb');
+  if(!DIA){stMsg.textContent='Selecione um dia primeiro';return;}
+  stBtn.classList.add('loading');stMsg.textContent='Buscando...';
+  try{
+    var url=SB_URL+'/rest/v1/enc_programacao?data_carga=eq.'+DIA+'&select=*&order=rota,ordem_tipo';
+    var r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    var rows=await r.json();
+    if(!rows.length){stMsg.textContent='Sem dados para '+DIA;stBtn.classList.remove('loading');return;}
+
+    if(!D[DIA])D[DIA]={mes:DIA.substring(0,7),km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:false,equipes:{}};
+    var eqs=D[DIA].equipes||{};
+    // Aplicar ajudantes às equipes existentes
+    var visto={};
+    rows.forEach(function(rec){
+      if(visto[rec.rota])return; visto[rec.rota]=true;
+      if(rec.ajudantes){
+        var motKey=Object.keys(eqs).find(function(k){
+          return (eqs[k].vda&&String(eqs[k].vda)===String(rec.vda))||
+                 (k.toLowerCase()===(rec.rota||'').toLowerCase());
+        });
+        if(motKey) eqs[motKey].ajudantes=rec.ajudantes;
+      }
+    });
+    saveLocal();
+    selDia(DIA);
+    stMsg.textContent=rows.length+' registros carregados ✓';
+  }catch(err){stMsg.textContent='Erro: '+err.message;}
+  stBtn.classList.remove('loading');
 }
 
 // ── PORTARIA ──
