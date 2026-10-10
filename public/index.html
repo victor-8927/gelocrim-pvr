@@ -3107,8 +3107,12 @@ function importEnc(inp){
   reader.readAsArrayBuffer(file);
 }
 
-// ── IMPORTAR PROGRAMAÇÃO INTELIGENTE ──
-// Lê a planilha GELOCRIM_Programacao_INTELIGENTE.xlsx e upsert em enc_programacao no Supabase
+// ── IMPORTAR PROGRAMAÇÃO INTELIGENTE (v3) ──
+// Layout v3: A=ROTA B=VDA C=MOTORISTA D=CAPACIDADE E=AJUDANTES(por linha)
+//            F=ORDEM DE CARGA(nr_romaneio) G=OPERAÇÃO H=VOLUME
+//            I=3kg J=5kg K=10kg L=20kg M=40kg N=50kg O=PESO P=OBSERVAÇÃO
+// Regras de O.C.: MANIFESTO=própria, CONSIGNADA=própria,
+//                 PRE-VENDA/TROCAS/BONIFICAÇÃO=podem compartilhar, SALDO=null
 function importProgramacao(inp){
   var file=inp.files[0];if(!file)return;
   var st=document.getElementById('st-prog');st.textContent='Lendo...';
@@ -3116,17 +3120,15 @@ function importProgramacao(inp){
   reader.onload=async function(e){
     try{
       var wb=XLSX.read(e.target.result,{type:'array'});
-      // Aceitar "PROGRAMAÇÃO INTELIGENTE" ou primeira aba
-      var wsName=wb.SheetNames.find(n=>n.toUpperCase().includes('PROGRAMA'))||wb.SheetNames[0];
+      var wsName=wb.SheetNames.find(function(n){return n.toUpperCase().includes('PROGRAMA');})||wb.SheetNames[0];
       var ws=wb.Sheets[wsName];
       var raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
 
-      // ── Detectar data (célula P1 = índice coluna 15) ──
+      // ── Detectar data: célula R1 (col índice 17); fallback P1 (15); fallback DIA ──
       var dataRow=raw[0];
-      var dataVal=dataRow&&dataRow[15]; // col P = índice 15
+      var dataVal=(dataRow&&dataRow[17])||(dataRow&&dataRow[15])||null;
       var alvo=DIA;
       if(dataVal){
-        // Pode ser número serial Excel ou string DD/MM/YYYY
         if(typeof dataVal==='number'){
           var d=new Date(Math.round((dataVal-25569)*86400*1000));
           alvo=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -3135,47 +3137,76 @@ function importProgramacao(inp){
           if(m) alvo=m[3]+'-'+m[2]+'-'+m[1];
         }
       }
-      if(!alvo){st.textContent='Selecione um dia ou preencha P1 na planilha';return;}
+      if(!alvo){st.textContent='Selecione um dia ou preencha R1 na planilha';return;}
 
-      // ── Localizar linha de cabeçalho (linha com "ROTA") ──
-      var hdrIdx=raw.findIndex(r=>r&&r[0]&&String(r[0]).toUpperCase().trim()==='ROTA');
+      // ── Localizar cabeçalho (linha com "ROTA" na col A) ──
+      var hdrIdx=raw.findIndex(function(r){return r&&r[0]&&String(r[0]).toUpperCase().trim()==='ROTA';});
       if(hdrIdx<0){st.textContent='Cabeçalho ROTA não encontrado';return;}
 
-      // ── Parsear blocos: 6 linhas por bloco (MANIFESTO..CONSIGNADA) + 1 vazia ──
-      var ORDENS_EXP=['MANIFESTO','PRE-VENDA','BONIFICAÇÃO','TROCAS','SALDO','CONSIGNADA'];
-      function toNum(v){if(v===null||v===undefined||v===''||v==='#DIV/0!')return 0;var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
+      // ── Operações válidas e regra de O.C. ──
+      var OPERACOES_VALIDAS=['MANIFESTO','PRE-VENDA','BONIFICAÇÃO','TROCAS','SALDO','CONSIGNADA'];
+      var SEM_OC=['SALDO']; // operações sem Ordem de Carga
+
+      function toNum(v){
+        if(v===null||v===undefined||v===''||v==='#DIV/0!'||v==='—')return 0;
+        var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;
+      }
       function toStr(v){return v===null||v===undefined?'':String(v).trim();}
+      function normOp(v){
+        return toStr(v).toUpperCase()
+          .replace('PRÉ-VENDA','PRE-VENDA')
+          .replace('BONIFICAÇAO','BONIFICAÇÃO')
+          .replace('BONI FICAÇÃO','BONIFICAÇÃO');
+      }
 
       var records=[];
-      var currentRota=null,currentVda=null,currentMot=null,currentCap=null,currentAjud=null;
+      var currentRota=null,currentVda=null,currentMot=null,currentCap=null;
+      var ajudantesBloco=[];   // coleta ajudantes linha a linha no bloco
       var dataStart=hdrIdx+1;
 
       for(var i=dataStart;i<raw.length;i++){
         var row=raw[i];
-        if(!row||row.every(v=>v===null||v===''||v===0))continue; // linha vazia = separador
+        // Separador: linha completamente vazia
+        if(!row||row.every(function(v){return v===null||v===''||v===0||v===undefined;})){
+          ajudantesBloco=[];continue;
+        }
 
-        // Cols: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11,M=12,N=13,O=14
+        // ── Colunas v3 (índices 0-15) ──
+        // A=0 ROTA  B=1 VDA  C=2 MOTORISTA  D=3 CAPACIDADE  E=4 AJUDANTE(linha)
+        // F=5 ORDEM DE CARGA(nr_romaneio)  G=6 OPERAÇÃO
+        // H=7 VOLUME  I=8 3kg  J=9 5kg  K=10 10kg  L=11 20kg  M=12 40kg  N=13 50kg
+        // O=14 PESO(kg)  P=15 OBSERVAÇÃO
         var rota=toStr(row[0]);
-        var vda=toStr(row[1]);
-        var mot=toStr(row[2]);
-        var cap=toNum(row[3]);
-        var ajud=toStr(row[4]);
-        var ordem=toStr(row[5]).toUpperCase().replace('PRÉ-VENDA','PRE-VENDA');
-        var vol=toNum(row[6]);
-        var kg3=toNum(row[7]),kg5=toNum(row[8]),kg10=toNum(row[9]);
-        var kg20=toNum(row[10]),kg40=toNum(row[11]),kg50=toNum(row[12]);
-        var pesoTotal=toNum(row[13]);
-        var obs=toStr(row[14]);
+        var vda =toStr(row[1]);
+        var mot =toStr(row[2]);
+        var cap =toNum(row[3]);
+        var ajudLinha=toStr(row[4]);
+        var ocRaw=row[5];   // Ordem de Carga / nr_romaneio
+        var opRaw=normOp(row[6]); // OPERAÇÃO (tipo)
+        var vol  =toNum(row[7]);
+        var kg3  =toNum(row[8]),kg5=toNum(row[9]),kg10=toNum(row[10]);
+        var kg20 =toNum(row[11]),kg40=toNum(row[12]),kg50=toNum(row[13]);
+        var pesoTotal=toNum(row[14]);
+        var obs  =toStr(row[15]);
 
-        // Campos de cabeçalho do bloco: ficam na 1ª linha (MANIFESTO) e propagam para as demais
+        // Propagar cabeçalho do bloco
         if(rota) currentRota=rota;
-        if(vda) currentVda=vda;
-        if(mot) currentMot=mot;
-        if(cap) currentCap=cap;
-        if(ajud) currentAjud=ajud;
+        if(vda)  currentVda=vda;
+        if(mot)  currentMot=mot;
+        if(cap)  currentCap=cap;
 
-        if(!ORDENS_EXP.includes(ordem))continue; // pula linhas sem tipo de ordem válido
+        // Coletar ajudante da linha (um por linha)
+        if(ajudLinha&&!ajudantesBloco.includes(ajudLinha)) ajudantesBloco.push(ajudLinha);
+
+        // Só registra linhas com operação válida
+        if(!OPERACOES_VALIDAS.includes(opRaw))continue;
         if(!currentRota)continue;
+
+        // Regra O.C.: SALDO nunca tem Ordem de Carga
+        var ocValor=null;
+        if(!SEM_OC.includes(opRaw)&&ocRaw!==null&&ocRaw!==''&&ocRaw!=='—'){
+          ocValor=toStr(ocRaw)||null;
+        }
 
         records.push({
           data_carga:alvo,
@@ -3183,11 +3214,12 @@ function importProgramacao(inp){
           vda:currentVda||null,
           motorista:currentMot||null,
           capacidade_kg:currentCap||null,
-          ajudantes:currentAjud||null,
-          ordem_tipo:ordem,
+          ajudantes_lista:ajudantesBloco.length?ajudantesBloco.slice():null,
+          nr_romaneio:ocValor,
+          operacao:opRaw,
           volume:vol,
           kg_3:kg3,kg_5:kg5,kg_10:kg10,kg_20:kg20,kg_40:kg40,kg_50:kg50,
-          peso_total_kg:pesoTotal||kg3*3+kg5*5+kg10*10+kg20*20+kg40*40+kg50*50,
+          peso_total_kg:pesoTotal||(kg3*3+kg5*5+kg10*10+kg20*20+kg40*40+kg50*50),
           observacao:obs||null
         });
       }
@@ -3195,7 +3227,7 @@ function importProgramacao(inp){
       if(!records.length){st.textContent='Nenhum dado encontrado na planilha';return;}
       st.textContent='Enviando '+records.length+' linhas...';
 
-      // ── Upsert em Supabase (enc_programacao) ──
+      // ── Upsert em Supabase (enc_programacao) — unique(data_carga, rota, operacao) ──
       var url=SB_URL+'/rest/v1/enc_programacao';
       var resp=await fetch(url,{
         method:'POST',
@@ -3207,27 +3239,24 @@ function importProgramacao(inp){
         },
         body:JSON.stringify(records)
       });
-      if(!resp.ok){var err=await resp.text();throw new Error('HTTP '+resp.status+' '+err);}
+      if(!resp.ok){var errTxt=await resp.text();throw new Error('HTTP '+resp.status+' '+errTxt);}
 
-      // ── Aplicar dados ao painel (ajudantes + peso por tipo) ──
+      // ── Aplicar ajudantes ao painel em memória ──
       if(!D[alvo])D[alvo]={mes:alvo.substring(0,7),km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:false,equipes:{}};
-      // Agrupar por rota para extrair ajudantes e peso total planejado
       var rotaMap={};
       records.forEach(function(rec){
-        if(!rotaMap[rec.rota])rotaMap[rec.rota]={ajudantes:rec.ajudantes,peso:0,vda:rec.vda};
+        if(!rotaMap[rec.rota])rotaMap[rec.rota]={ajudantes_lista:rec.ajudantes_lista,peso:0,vda:rec.vda};
         rotaMap[rec.rota].peso+=rec.peso_total_kg||0;
       });
-      // Associar ajudantes às equipes existentes (por VDA ou motorista)
       var eqs=D[alvo].equipes||{};
       Object.keys(rotaMap).forEach(function(rota){
         var rm=rotaMap[rota];
-        // Tentar encontrar equipe pelo VDA
         var motKey=Object.keys(eqs).find(function(k){
           return (eqs[k].vda&&String(eqs[k].vda)===String(rm.vda))||
                  (k&&rota&&k.toLowerCase()===rota.toLowerCase());
         });
-        if(motKey&&rm.ajudantes){
-          eqs[motKey].ajudantes=rm.ajudantes;
+        if(motKey&&rm.ajudantes_lista&&rm.ajudantes_lista.length){
+          eqs[motKey].ajudantes=rm.ajudantes_lista.join(' / ');
         }
       });
 
@@ -3247,7 +3276,8 @@ async function buscarProgSupabase(){
   if(!DIA){stMsg.textContent='Selecione um dia primeiro';return;}
   stBtn.classList.add('loading');stMsg.textContent='Buscando...';
   try{
-    var url=SB_URL+'/rest/v1/enc_programacao?data_carga=eq.'+DIA+'&select=*&order=rota,ordem_tipo';
+    // Campo renomeado: operacao (antes: ordem_tipo)
+    var url=SB_URL+'/rest/v1/enc_programacao?data_carga=eq.'+DIA+'&select=*&order=rota,operacao';
     var r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
     if(!r.ok)throw new Error('HTTP '+r.status);
     var rows=await r.json();
@@ -3255,16 +3285,20 @@ async function buscarProgSupabase(){
 
     if(!D[DIA])D[DIA]={mes:DIA.substring(0,7),km_plan:0,peso_plan_pv:0,peso_rotas:0,peso_eventos:0,has_prog:false,equipes:{}};
     var eqs=D[DIA].equipes||{};
-    // Aplicar ajudantes às equipes existentes
+    // Aplicar ajudantes às equipes existentes (1ª linha da rota)
     var visto={};
     rows.forEach(function(rec){
       if(visto[rec.rota])return; visto[rec.rota]=true;
-      if(rec.ajudantes){
+      // ajudantes_lista é array TEXT[]; fallback para campo legado ajudantes
+      var ajudNomes=null;
+      if(rec.ajudantes_lista&&rec.ajudantes_lista.length) ajudNomes=rec.ajudantes_lista.join(' / ');
+      else if(rec.ajudantes) ajudNomes=rec.ajudantes;
+      if(ajudNomes){
         var motKey=Object.keys(eqs).find(function(k){
           return (eqs[k].vda&&String(eqs[k].vda)===String(rec.vda))||
                  (k.toLowerCase()===(rec.rota||'').toLowerCase());
         });
-        if(motKey) eqs[motKey].ajudantes=rec.ajudantes;
+        if(motKey) eqs[motKey].ajudantes=ajudNomes;
       }
     });
     saveLocal();
