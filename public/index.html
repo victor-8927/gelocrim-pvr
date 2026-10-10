@@ -3107,12 +3107,14 @@ function importEnc(inp){
   reader.readAsArrayBuffer(file);
 }
 
-// ── IMPORTAR PROGRAMAÇÃO INTELIGENTE (v3) ──
-// Layout v3: A=ROTA B=VDA C=MOTORISTA D=CAPACIDADE E=AJUDANTES(por linha)
-//            F=ORDEM DE CARGA(nr_romaneio) G=OPERAÇÃO H=VOLUME
-//            I=3kg J=5kg K=10kg L=20kg M=40kg N=50kg O=PESO P=OBSERVAÇÃO
-// Regras de O.C.: MANIFESTO=própria, CONSIGNADA=própria,
-//                 PRE-VENDA/TROCAS/BONIFICAÇÃO=podem compartilhar, SALDO=null
+// ── IMPORTAR PROGRAMAÇÃO INTELIGENTE (v4) ──
+// Layout v4 (SEM coluna VOLUME):
+//   A=ROTA B=VDA C=MOTORISTA D=CAPACIDADE E=AJUDANTES(por linha)
+//   F=ORDEM DE CARGA(nr_romaneio) G=OPERAÇÃO
+//   H=3kg I=5kg J=10kg K=20kg L=40kg M=50kg
+//   N=PESO TOTAL  O=OBSERVAÇÃO
+// Pesos reais: 3→3 5→6 10→11 20→23 40→45 50→54
+// Regras O.C.: MANIFESTO/CONSIGNADA=própria, PRE-VENDA/TROCAS/BONIFICAÇÃO=compartilham, SALDO=null
 function importProgramacao(inp){
   var file=inp.files[0];if(!file)return;
   var st=document.getElementById('st-prog');st.textContent='Lendo...';
@@ -3171,23 +3173,23 @@ function importProgramacao(inp){
           ajudantesBloco=[];continue;
         }
 
-        // ── Colunas v3 (índices 0-15) ──
+        // ── Colunas v4 (índices 0-14) ──
         // A=0 ROTA  B=1 VDA  C=2 MOTORISTA  D=3 CAPACIDADE  E=4 AJUDANTE(linha)
         // F=5 ORDEM DE CARGA(nr_romaneio)  G=6 OPERAÇÃO
-        // H=7 VOLUME  I=8 3kg  J=9 5kg  K=10 10kg  L=11 20kg  M=12 40kg  N=13 50kg
-        // O=14 PESO(kg)  P=15 OBSERVAÇÃO
+        // H=7 3kg  I=8 5kg  J=9 10kg  K=10 20kg  L=11 40kg  M=12 50kg
+        // N=13 PESO TOTAL  O=14 OBSERVAÇÃO
+        // Pesos reais: 3=3 5=6 10=11 20=23 40=45 50=54
         var rota=toStr(row[0]);
         var vda =toStr(row[1]);
         var mot =toStr(row[2]);
         var cap =toNum(row[3]);
         var ajudLinha=toStr(row[4]);
-        var ocRaw=row[5];   // Ordem de Carga / nr_romaneio
-        var opRaw=normOp(row[6]); // OPERAÇÃO (tipo)
-        var vol  =toNum(row[7]);
-        var kg3  =toNum(row[8]),kg5=toNum(row[9]),kg10=toNum(row[10]);
-        var kg20 =toNum(row[11]),kg40=toNum(row[12]),kg50=toNum(row[13]);
-        var pesoTotal=toNum(row[14]);
-        var obs  =toStr(row[15]);
+        var ocRaw=row[5];           // Ordem de Carga / nr_romaneio
+        var opRaw=normOp(row[6]);   // OPERAÇÃO (tipo)
+        var kg3  =toNum(row[7]),kg5=toNum(row[8]),kg10=toNum(row[9]);
+        var kg20 =toNum(row[10]),kg40=toNum(row[11]),kg50=toNum(row[12]);
+        var pesoTotal=toNum(row[13]);
+        var obs  =toStr(row[14]);
 
         // Propagar cabeçalho do bloco
         if(rota) currentRota=rota;
@@ -3208,6 +3210,8 @@ function importProgramacao(inp){
           ocValor=toStr(ocRaw)||null;
         }
 
+        // Peso com valores reais: 3→3 5→6 10→11 20→23 40→45 50→54
+        var pesoCalc=kg3*3+kg5*6+kg10*11+kg20*23+kg40*45+kg50*54;
         records.push({
           data_carga:alvo,
           rota:currentRota,
@@ -3217,9 +3221,8 @@ function importProgramacao(inp){
           ajudantes_lista:ajudantesBloco.length?ajudantesBloco.slice():null,
           nr_romaneio:ocValor,
           operacao:opRaw,
-          volume:vol,
           kg_3:kg3,kg_5:kg5,kg_10:kg10,kg_20:kg20,kg_40:kg40,kg_50:kg50,
-          peso_total_kg:pesoTotal||(kg3*3+kg5*5+kg10*10+kg20*20+kg40*40+kg50*50),
+          peso_total_kg:pesoTotal||pesoCalc,
           observacao:obs||null
         });
       }
