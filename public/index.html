@@ -1129,6 +1129,9 @@ async function forcSync(){
     var r2=await fetch(SB_URL+'/rest/v1/pvr_equipes?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
     var eq_sb=await r2.json();
     eq_sb.forEach(function(e){
+      // Sempre popular LE com dados reais vindos do Supabase
+      if(!LE[e.dia])LE[e.dia]={};
+      LE[e.dia][e.motorista]={hod_ini:e.hod_ini||'',hod_ret:e.hod_ret||'',km_real:e.km_real||null,h_saida_real:e.h_saida_real||null,h_ret_real:e.h_ret_real||null,ok:e.ok||false};
       if(D[e.dia]&&!D[e.dia].equipes[e.motorista]){
         D[e.dia].equipes[e.motorista]={cargas:[],vdas:e.vdas||[],equipe:e.equipe||[],km_plan:+e.km_plan||0,peso_plan:+e.peso_plan||0,h_saida_plan:e.h_saida_plan||'07:00',ok:e.ok||false};
       }
@@ -1141,7 +1144,7 @@ async function forcSync(){
         var jaExiste=D[c.dia].equipes[c.motorista].cargas.some(function(x){return x.id===c.carga_id;});
         if(!jaExiste)D[c.dia].equipes[c.motorista].cargas.push({id:c.carga_id,rota:c.rota,vda:c.vda||'',km_plan:+c.km_plan||0,peso_plan:+c.peso_plan||0,h_saida_plan:c.h_saida_plan||'07:00',h_ret_plan:c.h_ret_plan||'',tipo:c.tipo||'rota',cancelada:c.cancelada||false,ok:c.ok||false});
         if(!LC[c.dia])LC[c.dia]={};
-        LC[c.dia][c.carga_id]={ok:c.ok||false,cancelada:c.cancelada||false,peso_real:c.peso_real||'',hod_ini:c.hod_ini||'',hod_ret:c.hod_ret||'',h_saida_real:c.h_saida_real||'',h_ret_real:c.h_ret_real||''};
+        LC[c.dia][c.carga_id]={ok:c.ok||false,cancelada:c.cancelada||false,peso_real:c.peso_real||'',hod_ini:c.hod_ini||'',hod_ret:c.hod_ret||'',h_saida_real:c.h_saida_real||null,h_ret_real:c.h_ret_real||null};
       }
     });
     saveLocal();
@@ -1476,12 +1479,15 @@ function renderKPIs(){
     var E=eq[mot];
     var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
     var hSP=hm2min(E.h_saida_plan||'07:00');
-    // Saída real = menor saída real das cargas
+    // Saída real = menor saída real das cargas (fallback: dado agregado da equipe em LE)
     var hSRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_saida_real||c.h_saida_real||null;}).filter(Boolean);
-    var hSR=hSRs.length?Math.min.apply(null,hSRs.map(hm2min)):null;
-    // Retorno real = maior retorno real das cargas
+    var le=(LE[DIA]||{})[mot]||{};
+    var hSR=hSRs.length?Math.min.apply(null,hSRs.map(hm2min)):(le.h_saida_real||null);
+    if(hSR&&typeof hSR==='string')hSR=hm2min(hSR);
+    // Retorno real = maior retorno real das cargas (fallback: dado agregado da equipe em LE)
     var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
-    var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):null;
+    var hRR=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):(le.h_ret_real||null);
+    if(hRR&&typeof hRR==='string')hRR=hm2min(hRR);
     if(hRR===null)return;
     // Tempo real = retorno real - saída real (ou planejada se não tem real)
     var hSBase = hSR!==null ? hSR : hSP;
@@ -1615,6 +1621,7 @@ function renderEquipes(){
   var el=document.getElementById('eq-cards');if(!el)return;
   if(!DIA||!D[DIA]){el.innerHTML='<div class="nodata">Selecione um dia acima</div>';return;}
   var eqs=D[DIA].equipes||{},nEq=Object.keys(eqs).length;
+  if(!LE[DIA])LE[DIA]={};
   var nOk=Object.keys(eqs).filter(function(m){return(LE[DIA][m]||{}).ok;}).length;
   document.getElementById('eq-title').textContent=DIA.split('-').reverse().join('/')+' - '+nEq+' equipes';
   document.getElementById('eq-prog').innerHTML='<b>'+nOk+'</b>/'+nEq+' OK';
@@ -1640,6 +1647,9 @@ function renderEquipes(){
       if(hRR&&(!hRetUltReal||hRR>hRetUltReal))hRetUltReal=hRR;
       if(c.h_ret_plan&&(!hRetUltPlan||c.h_ret_plan>hRetUltPlan))hRetUltPlan=c.h_ret_plan;
     });
+    // Fallback: usar dados agregados da equipe (LE) se não há dados por carga
+    if(!hSaida1aReal&&le.h_saida_real)hSaida1aReal=le.h_saida_real;
+    if(!hRetUltReal&&le.h_ret_real)hRetUltReal=le.h_ret_real;
     var hIniPlan=E.h_saida_plan||'07:00';
     var tPlanMin=hRetUltPlan?hm2min(hRetUltPlan)-hm2min(hIniPlan):null;
     var tRealMin=hRetUltReal?hm2min(hRetUltReal)-hm2min(hIniPlan):null;
@@ -3684,9 +3694,11 @@ function renderGer(){
     var cargas=(E.cargas||[]).filter(function(c){return c.tipo!=='evento';});
     var hSP=E.h_saida_plan||'07:00';
     var hSRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_saida_real||c.h_saida_real||null;}).filter(Boolean);
-    var hSR=hSRs.length?min2hm(Math.min.apply(null,hSRs.map(hm2min))):null;
+    var hSRmin=hSRs.length?Math.min.apply(null,hSRs.map(hm2min)):(le.h_saida_real?hm2min(le.h_saida_real):null);
+    var hSR=hSRmin!==null?min2hm(hSRmin):null;
     var hRRs=cargas.map(function(c){var lc=(LC[DIA]||{})[c.id]||{};return lc.h_ret_real||c.h_ret_real||null;}).filter(Boolean);
-    var hRR=hRRs.length?min2hm(Math.max.apply(null,hRRs.map(hm2min))):null;
+    var hRRmax=hRRs.length?Math.max.apply(null,hRRs.map(hm2min)):(le.h_ret_real?hm2min(le.h_ret_real):null);
+    var hRR=hRRmax!==null?min2hm(hRRmax):null;
     var atraso=hSR?Math.max(0,hm2min(hSR)-hm2min(hSP)):null;
     var excesso=hRR?Math.max(0,hm2min(hRR)-LIMITE):null;
     // KM real por hodômetro
