@@ -3543,8 +3543,25 @@ async function lerFotoPortaria(inp){
     var tbody=document.getElementById('port-tbody');
     var rows=tbody.querySelectorAll('tr');
 
+    // Garantir que há linhas suficientes na tabela para todos os dados da IA
+    var nLinhasAtual=rows.length;
+    var nLinhasExtra=linhas.length-nLinhasAtual;
+    for(var ex=0;ex<nLinhasExtra;ex++){
+      var iEx=nLinhasAtual+ex;
+      var trEx=document.createElement('tr');
+      trEx.innerHTML=
+        '<td><input class="port-inp" placeholder="Romaneio" id="pr_rom_'+iEx+'" onchange="portCruzar('+iEx+')"></td>'+
+        '<td><div class="port-row-info" id="pr_mot_'+iEx+'"></div></td>'+
+        '<td><input class="port-inp" placeholder="VDA" id="pr_vda_'+iEx+'"></td>'+
+        '<td><input class="port-inp" placeholder="KM ini" id="pr_ini_'+iEx+'"></td>'+
+        '<td><input class="port-inp" placeholder="KM ret" id="pr_ret_'+iEx+'"></td>'+
+        '<td><input class="port-inp" type="time" id="pr_hs_'+iEx+'"></td>'+
+        '<td><input class="port-inp" type="time" id="pr_hr_'+iEx+'"></td>';
+      tbody.appendChild(trEx);
+    }
+    rows=tbody.querySelectorAll('tr'); // re-selecionar após adicionar linhas
+
     linhas.forEach(function(dado,i){
-      if(i>=rows.length)return;
       var romEl=document.getElementById('pr_rom_'+i);
       var vdaEl=document.getElementById('pr_vda_'+i);
       var iniEl=document.getElementById('pr_ini_'+i);
@@ -3552,8 +3569,26 @@ async function lerFotoPortaria(inp){
       var hsEl=document.getElementById('pr_hs_'+i);
       var hrEl=document.getElementById('pr_hr_'+i);
       var motEl=document.getElementById('pr_mot_'+i);
+      if(!romEl)return;
 
-      if(romEl&&dado.romaneio){romEl.value=dado.romaneio;portCruzar(i);}
+      // 1. Preencher romaneio e tentar cruzar pelo número
+      if(dado.romaneio){romEl.value=dado.romaneio;portCruzar(i);}
+
+      // 2. Se portCruzar não encontrou (motEl ainda mostra texto de erro ou vazio),
+      //    tentar cruzar pelo nome do motorista que a IA leu
+      var motAtual=motEl?motEl.textContent.trim():'';
+      if((!motAtual||motAtual==='Romaneio não encontrado')&&dado.motorista){
+        var eq2=D[DIA]&&D[DIA].equipes||{};
+        var primeiroNomeIA=dado.motorista.trim().toUpperCase().split(' ')[0];
+        var motEncontrado=Object.keys(eq2).find(function(m){
+          return m.toUpperCase().indexOf(primeiroNomeIA)>=0;
+        });
+        if(motEncontrado&&motEl){
+          motEl.textContent=motEncontrado+(eq2[motEncontrado].cargas&&eq2[motEncontrado].cargas[0]?' — '+eq2[motEncontrado].cargas[0].rota:'');
+          if(romEl)romEl.classList.remove('err');romEl.classList.add('ok');
+        }
+      }
+
       if(vdaEl&&dado.vda)vdaEl.value=dado.vda;
       if(iniEl&&dado.km_saida)iniEl.value=dado.km_saida;
       if(retEl&&dado.km_retorno)retEl.value=dado.km_retorno;
